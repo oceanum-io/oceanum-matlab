@@ -1,1 +1,26 @@
 CLAUDE.md
+# MATLAB autosave and temporary files
+*.asv
+*.m~
+*.autosave
+# MATLAB generated files
+*.log
+*.bak
+*.pref
+*.mat.orig
+# Simulink related files
+slprj/
+*.slx.autosave
+*.sltx.autosave
+*.mdl.autosave
+# MEX files (compiled binaries)
+*.mex*
+# Project specific files that may vary between users
+.project
+.settings/
+# Operating system and editor specific files
+.DS_Store
+Thumbs.db
+*~
+# Octave workspace files (if applicable)
+octave-workspace

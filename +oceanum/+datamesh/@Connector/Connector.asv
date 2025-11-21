@@ -61,14 +61,7 @@ classdef Connector < handle
             
             fprintf('Datamesh connector created for %s\n', obj.host);
         end
-        
         function catalog = getCatalog(obj, search, limit)
-          % GETCATALOG - Retrieve datasource catalog with optional search and limit
-          %
-          % Input arguments:
-          % obj   - connector object with proto/host/authHeaders
-          % search - optional search string (text scalar)
-          % limit - optional numeric limit on returned items
             arguments
                 obj
                 search {mustBeTextScalar} = ''
@@ -77,10 +70,10 @@ classdef Connector < handle
             
             % Build query parameters
             params = [];
-            if ~isempty(options.search)
+            if ~isempty(search)
                 params = [params matlab.net.QueryParameter('search', search)];
             end
-            if ~isempty(options.limit)
+            if ~isempty(limit)
                 params = [params matlab.net.QueryParameter('limit', string(limit))];
             end
             
@@ -130,11 +123,11 @@ classdef Connector < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
         
-        function data = loadDatasource(obj, datasourceId, useDask)
+        function data = loadDatasource(obj, datasourceId, varargin)
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
-                useDask logical = false % Need to see if this works in MATLAB...
+                options.useDask logical = false
             end
             
             % For MATLAB implementation, we'll fetch the data directly
