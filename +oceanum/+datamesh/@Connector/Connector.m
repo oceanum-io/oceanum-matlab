@@ -22,11 +22,17 @@ classdef Connector < handle
     end
     
     methods
-        function obj = Connector(token, options)
+        function obj = Connector(token, service, verify)
+          % CONNECTOR - Construct a Connector for the DataMesh service
+          %
+          % Input arguments:
+          % token   - API token (text scalar). Defaults to DATAMESH_TOKEN env var.
+          % service - Service base URL (text scalar). Defaults to production URL.
+          % verify  - Logical flag to verify TLS certificates (true/false).
             arguments
                 token {mustBeTextScalar} = getenv('DATAMESH_TOKEN')
-                options.service {mustBeTextScalar} = 'https://datamesh.oceanum.io'
-                options.verify logical = true
+                service {mustBeTextScalar} = 'https://datamesh.oceanum.io'
+                verify logical = true
             end
 
             if isempty(token)
@@ -37,9 +43,9 @@ classdef Connector < handle
             obj.token = token;
             obj.service = getenv('DATAMESH_SERVICE');
             if isempty(obj.service)
-                obj.service = options.service;
+                obj.service = service;
             end
-            obj.verify = options.verify;
+            obj.verify = verify;
             
             % Parse service URL
             uri = matlab.net.URI(obj.service);
@@ -77,11 +83,11 @@ classdef Connector < handle
             
             % Build query parameters
             params = [];
-            if ~isempty(options.search)
-                params = [params matlab.net.QueryParameter('search', search)];
+            if ~isempty(search)
+                params = [params, matlab.net.QueryParameter('search', search)];
             end
-            if ~isempty(options.limit)
-                params = [params matlab.net.QueryParameter('limit', string(limit))];
+            if ~isempty(limit)
+                params = [params, matlab.net.QueryParameter('limit', string(limit))];
             end
             
             % Make request
@@ -102,6 +108,14 @@ classdef Connector < handle
         end
         
         function datasource = getDatasource(obj, datasourceId)
+          % GETDATASOURCE - Retrieve a datasource by its identifier
+          %
+          % Input arguments:
+          % obj          - Connector instance providing datasource access
+          % datasourceId - text scalar identifier of the datasource
+          %
+          % Output arguments:
+          % datasource   - the retrieved datasource object or struct
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
@@ -131,6 +145,15 @@ classdef Connector < handle
         end
         
         function data = loadDatasource(obj, datasourceId, useDask)
+            % LOADDATASOURCE - Load data for a given datasource identifier
+            %
+            % Input arguments:
+            % obj          - object instance providing datasource access
+            % datasourceId - text scalar identifier of the datasource
+            % useDask      - logical flag (ignored in MATLAB; placeholder)
+            %
+            % Output arguments:
+            % data         - loaded datasource content
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
@@ -177,31 +200,40 @@ classdef Connector < handle
             end
         end
         
-        function result = query(obj, varargin)
+        function result = query(obj, datasource, variables, timefilter, geofilter, limit)
+          % QUERY - Build and execute a data query on the object datasource
+          %
+          % Input arguments:
+          % obj        - object providing query execution methods
+          % datasource - optional datasource name (text scalar)
+          % variables  - optional list of variable names (cell)
+          % timefilter - optional time filtering struct
+          % geofilter  - optional geographic filtering struct
+          % limit      - optional numeric result limit
             arguments
                 obj
-                options.datasource {mustBeTextScalar} = ''
-                options.variables cell = {}
-                options.timefilter struct = struct.empty
-                options.geofilter struct = struct.empty
-                options.limit double = []
+                datasource {mustBeTextScalar} = ''
+                variables cell = {}
+                timefilter struct = struct.empty
+                geofilter struct = struct.empty
+                limit double = []
             end
             
             % Build query structure
             queryStruct = struct();
-            queryStruct.datasource = options.datasource;
+            queryStruct.datasource = datasource;
             
-            if ~isempty(options.variables)
-                queryStruct.variables = options.variables;
+            if ~isempty(variables)
+                queryStruct.variables = variables;
             end
-            if ~isempty(options.timefilter)
-                queryStruct.timefilter = options.timefilter;
+            if ~isempty(timefilter)
+                queryStruct.timefilter = timefilter;
             end
-            if ~isempty(options.geofilter)
-                queryStruct.geofilter = options.geofilter;
+            if ~isempty(geofilter)
+                queryStruct.geofilter = geofilter;
             end
-            if ~isempty(options.limit)
-                queryStruct.limit = options.limit;
+            if ~isempty(limit)
+                queryStruct.limit = limit;
             end
             
             % Convert to JSON and make request

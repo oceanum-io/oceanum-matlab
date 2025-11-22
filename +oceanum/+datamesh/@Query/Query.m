@@ -1,4 +1,8 @@
 classdef Query < handle
+    %QUERY - Encapsulate parameters and filters for a data query
+    %   Q = QUERY() creates an empty query object. Fields represent datasource,
+    %   selection variables and various filters (time, geo, level, coord).
+    %   Useful helpers generate canonical filter structs.
     properties
         datasource
         parameters
@@ -17,6 +21,13 @@ classdef Query < handle
     
     methods
         function obj = Query(varargin)
+          % QUERY - Construct a Query object from struct or name-value pairs
+          %
+          % Input arguments:
+          % varargin - either a single struct describing the object or name-value pairs
+          %
+          % Output arguments:
+          % obj      - initialized Query object
             arguments (Repeating)
                 varargin
             end
@@ -28,7 +39,7 @@ classdef Query < handle
                     s = varargin{1};
                     obj.setFromStruct(s);
                 elseif ischar(varargin{1}) || isstring(varargin{1})
-                    % Parse name-value pairs
+                    % Parse name-value pairs into expected properties
                     p = inputParser;
                     addParameter(p, 'datasource', '', @(x) ischar(x) || isstring(x));
                     addParameter(p, 'parameters', struct(), @isstruct);
@@ -154,30 +165,38 @@ classdef Query < handle
     end
     
     methods (Static)
-        function timefilter = createTimeFilter(times, varargin)
-            % Helper method to create time filter
+        function timefilter = createTimeFilter(times, type, resolution, resample)
+          % CREATETIMEFILTER - Build a simple time-filter descriptor struct
+          %
+          % Input arguments:
+          % times      - time values or interval to filter on
+          % type       - 'range' (default) or other filter type
+          % resolution - time resolution, 'native' by default
+          % resample   - resampling method, 'linear' by default
+          % 
+          % Note: Helper method to create time filter
             arguments
                 times
-                options.type {mustBeTextScalar} = 'range'
-                options.resolution {mustBeTextScalar} = 'native'
-                options.resample {mustBeTextScalar} = 'linear'
+                type {mustBeTextScalar} = 'range'
+                resolution {mustBeTextScalar} = 'native'
+                resample {mustBeTextScalar} = 'linear'
             end
             
             timefilter = struct();
-            timefilter.type = options.type;
+            timefilter.type = type;
             timefilter.times = times;
-            timefilter.resolution = options.resolution;
-            timefilter.resample = options.resample;
+            timefilter.resolution = resolution;
+            timefilter.resample = resample;
         end
         
-        function geofilter = createGeoFilter(geom, varargin)
+        function geofilter = createGeoFilter(geom, type, interp, resolution, alltouched)
             % Helper method to create geo filter
             arguments
                 geom
-                options.type {mustBeTextScalar} = 'bbox'
-                options.interp {mustBeTextScalar} = 'linear'
-                options.resolution double = 0.0
-                options.alltouched logical = false
+                type {mustBeTextScalar} = 'bbox'
+                interp {mustBeTextScalar} = 'linear'
+                resolution double = 0.0
+                alltouched logical = false
             end
             
             geofilter = struct();
