@@ -244,8 +244,8 @@ classdef Connector < handle
             % Convert to JSON and make request
             jsonData = jsonencode(queryStruct);
             uri = matlab.net.URI([obj.gateway, '/oceanql/']);
-            headers = [obj.authHeaders 
-                      matlab.net.http.HeaderField('Content-Type', 'application/json')
+            headers = [obj.authHeaders, ... 
+                      matlab.net.http.HeaderField('Content-Type', 'application/json'), ...
                       matlab.net.http.HeaderField('Accept', 'application/parquet')];
 
             body = matlab.net.http.MessageBody(jsonData);
