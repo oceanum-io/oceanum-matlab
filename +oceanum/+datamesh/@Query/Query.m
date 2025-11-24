@@ -200,25 +200,25 @@ classdef Query < handle
             end
             
             geofilter = struct();
-            geofilter.type = options.type;
+            geofilter.type = type;
             geofilter.geom = geom;
-            geofilter.interp = options.interp;
-            geofilter.resolution = options.resolution;
-            geofilter.alltouched = options.alltouched;
+            geofilter.interp = interp;
+            geofilter.resolution = resolution;
+            geofilter.alltouched = alltouched;
         end
         
-        function levelfilter = createLevelFilter(levels, varargin)
+        function levelfilter = createLevelFilter(levels, type, interp)
             % Helper method to create level filter
             arguments
                 levels
-                options.type {mustBeTextScalar} = 'range'
-                options.interp {mustBeTextScalar} = 'linear'
+                type {mustBeTextScalar} = 'range'
+                interp {mustBeTextScalar} = 'linear'
             end
             
             levelfilter = struct();
-            levelfilter.type = options.type;
+            levelfilter.type = type;
             levelfilter.levels = levels;
-            levelfilter.interp = options.interp;
+            levelfilter.interp = interp;
         end
     end
 end

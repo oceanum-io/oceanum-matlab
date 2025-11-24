@@ -20,7 +20,7 @@ classdef Connector < handle
         proto
         host
     end
-    
+
     methods
         function obj = Connector(token, service, verify)
           % CONNECTOR - Construct a Connector for the DataMesh service
@@ -35,40 +35,44 @@ classdef Connector < handle
                 verify logical = true
             end
 
+            %%%$ integrate into code later 
+            user = NaN;
+            gateway = getenv("DATAMESH_GATEWAY");
+
+
             if isempty(token)
                 error('oceanum:datamesh:Connector:missingToken', ...
                     'A valid token must be supplied or defined in environment variable DATAMESH_TOKEN');
             end
-            
+
             obj.token = token;
             obj.service = getenv('DATAMESH_SERVICE');
             if isempty(obj.service)
                 obj.service = service;
             end
             obj.verify = verify;
-            
+
             % Parse service URL
             uri = matlab.net.URI(obj.service);
             obj.proto = uri.Scheme;
             obj.host = uri.Host;
-            
+
             % Set up authentication headers
             if startsWith(token, 'Bearer ')
                 obj.authHeaders = matlab.net.http.HeaderField('Authorization', token);
             else
-                obj.authHeaders = [
-                    matlab.net.http.HeaderField('Authorization', ['Token ' token])
-                    matlab.net.http.HeaderField('X-DATAMESH-TOKEN', token)
-                ];
+                obj.authHeaders = [matlab.net.http.HeaderField('Authorization', strcat('Token ', token)), ...                    
+                    matlab.net.http.HeaderField('X-DATAMESH-TOKEN', token)];
+
             end
-            
+
             % Set gateway
             obj.gateway = [obj.service '/gateway/'];
-            
+
             fprintf('Datamesh connector created for %s\n', obj.host);
         end
-        
-        function catalog = getCatalog(obj, search, limit)
+
+        function catalog = get_catalog(obj, search, limit)
           % GETCATALOG - Retrieve datasource catalog with optional search and limit
           %
           % Input arguments:
@@ -80,7 +84,7 @@ classdef Connector < handle
                 search {mustBeTextScalar} = ''
                 limit double = []
             end
-            
+
             % Build query parameters
             params = [];
             if ~isempty(search)
@@ -89,24 +93,25 @@ classdef Connector < handle
             if ~isempty(limit)
                 params = [params, matlab.net.QueryParameter('limit', string(limit))];
             end
-            
+
             % Make request
-            uri = matlab.net.URI([obj.proto '://' obj.host '/datasource/']);
+            uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/'));
             if ~isempty(params)
                 uri.Query = params;
             end
-            
-            request = matlab.net.http.RequestMessage('GET', obj.authHeaders);
+            method = matlab.net.http.RequestMethod.GET;
+            % header = matlab.net.http.HeaderField('Authorization', obj.authHeaders);
+            request = matlab.net.http.RequestMessage(method, obj.authHeaders);
             response = send(request, uri);
-            
+
             if response.StatusCode ~= matlab.net.http.StatusCode.OK
                 error('oceanum:datamesh:Connector:catalogError', ...
                     'Failed to retrieve catalog: %s', char(response.StatusCode));
             end
-            
+
             catalog = oceanum.datamesh.Catalog(response.Body.Data, obj);
         end
-        
+
         function datasource = getDatasource(obj, datasourceId)
           % GETDATASOURCE - Retrieve a datasource by its identifier
           %
@@ -120,11 +125,11 @@ classdef Connector < handle
                 obj
                 datasourceId {mustBeTextScalar}
             end
-            
-            uri = matlab.net.URI([obj.proto '://' obj.host '/datasource/' datasourceId]);
+
+            uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/', datasourceId]));
             request = matlab.net.http.RequestMessage('GET', obj.authHeaders);
             response = send(request, uri);
-            
+
             if response.StatusCode == matlab.net.http.StatusCode.NotFound
                 error('oceanum:datamesh:Connector:notFound', ...
                     'Datasource %s not found', datasourceId);
@@ -135,15 +140,15 @@ classdef Connector < handle
                 error('oceanum:datamesh:Connector:requestError', ...
                     'Request failed with status %s', char(response.StatusCode));
             end
-            
+
             data = response.Body.Data;
             props = data.properties;
             props.id = datasourceId;
             props.geom = data.geometry;
-            
+
             datasource = oceanum.datamesh.Datasource(props);
         end
-        
+
         function data = loadDatasource(obj, datasourceId, useDask)
             % LOADDATASOURCE - Load data for a given datasource identifier
             %
@@ -159,26 +164,26 @@ classdef Connector < handle
                 datasourceId {mustBeTextScalar}
                 useDask logical = false % Need to see if this works in MATLAB...
             end
-            
+
             % For MATLAB implementation, we'll fetch the data directly
             % since MATLAB doesn't have the same async/dask capabilities
             uri = matlab.net.URI([obj.gateway '/data/' datasourceId]);
             headers = [obj.authHeaders matlab.net.http.HeaderField('Accept', 'application/parquet')];
             request = matlab.net.http.RequestMessage('GET', headers);
             response = send(request, uri);
-            
+
             if response.StatusCode ~= matlab.net.http.StatusCode.OK
                 error('oceanum:datamesh:Connector:loadError', ...
                     'Failed to load datasource %s: %s', datasourceId, char(response.StatusCode));
             end
-            
+
             % Save response to temporary file and read with readtable
             tempFile = [tempname, '.parquet'];
             try
                 fid = fopen(tempFile, 'wb');
                 fwrite(fid, response.Body.Data);
                 fclose(fid);
-                
+
                 % Try to read as parquet, fallback to CSV if needed
                 try
                     data = readtable(tempFile, 'FileType', 'parquet');
@@ -194,12 +199,12 @@ classdef Connector < handle
                 end
                 rethrow(ME);
             end
-            
+
             if exist(tempFile, 'file')
                 delete(tempFile);
             end
         end
-        
+
         function result = query(obj, datasource, variables, timefilter, geofilter, limit)
           % QUERY - Build and execute a data query on the object datasource
           %
@@ -218,11 +223,11 @@ classdef Connector < handle
                 geofilter struct = struct.empty
                 limit double = []
             end
-            
+
             % Build query structure
             queryStruct = struct();
             queryStruct.datasource = datasource;
-            
+
             if ~isempty(variables)
                 queryStruct.variables = variables;
             end
@@ -235,30 +240,30 @@ classdef Connector < handle
             if ~isempty(limit)
                 queryStruct.limit = limit;
             end
-            
+
             % Convert to JSON and make request
             jsonData = jsonencode(queryStruct);
             uri = matlab.net.URI([obj.gateway, '/oceanql/']);
             headers = [obj.authHeaders 
                       matlab.net.http.HeaderField('Content-Type', 'application/json')
                       matlab.net.http.HeaderField('Accept', 'application/parquet')];
-            
+
             body = matlab.net.http.MessageBody(jsonData);
             request = matlab.net.http.RequestMessage('POST', headers, body);
             response = send(request, uri);
-            
+
             if response.StatusCode ~= matlab.net.http.StatusCode.OK
                 error('oceanum:datamesh:Connector:queryError', ...
                     'Query failed with status %s', char(response.StatusCode));
             end
-            
+
             % Save and read response data similar to loadDatasource
             tempFile = [tempname '.parquet'];
             try
                 fid = fopen(tempFile, 'wb');
                 fwrite(fid, response.Body.Data);
                 fclose(fid);
-                
+
                 try
                     result = readtable(tempFile, 'FileType', 'parquet');
                 catch
@@ -272,7 +277,7 @@ classdef Connector < handle
                 end
                 rethrow(ME);
             end
-            
+
             if exist(tempFile, 'file')
                 delete(tempFile);
             end
