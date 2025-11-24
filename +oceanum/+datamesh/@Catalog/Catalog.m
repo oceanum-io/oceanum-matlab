@@ -6,15 +6,19 @@ classdef Catalog < handle
     %   Properties:
     %       geojson   - Parsed GeoJSON structure
     %       ids       - Cached list of feature identifiers
+    %       Extent    - Geographical extent of datasource
+    %       Timerange - Time range of datasource (start to end of record)
     %       connector - External connector for data access
     properties (Access=private)
         geojson
         ids
+        Extent
+        Timerange
         connector
     end
     
     methods
-        function obj = Catalog(geojsonData, connector)
+        function obj = Catalog(geojsonData, connector, timefilter, geofilter, limit)
             % CATALOG - Construct a Catalog from GeoJSON and a connector
             %
             % Input arguments:
@@ -23,17 +27,27 @@ classdef Catalog < handle
             arguments
                 geojsonData struct
                 connector oceanum.datamesh.Connector
+                timefilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement 
+                geofilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement (could be a dictionary need to check)
+                limit int32 = NaN
             end
             
             obj.geojson = geojsonData;
             obj.connector = connector;
             
-            % Extract datasource IDs
+            % Extract datasource IDs and time range
             if isfield(geojsonData, 'features') && ~isempty(geojsonData.features)
                 % Preallocate cell array for feature ids
                 obj.ids = cell(length(geojsonData.features), 1);
+                obj.Extent = cell(length(geojsonData.features), 1);
+                obj.Timerange = cell(length(geojsonData.features), 1);
                 for i = 1:length(geojsonData.features)
                     obj.ids{i} = geojsonData.features(i).id;
+                    
+                    % Extract coordinates and time range
+                    obj.Extent{i} = geojsonData.features(i).bbox.'; % Store geometry coordinates
+                    obj.Timerange{i} = {geojsonData.features(i).properties.tstart, ...
+                                        geojsonData.features(i).properties.tend};
                 end
             else
                 obj.ids = {};
@@ -63,13 +77,19 @@ classdef Catalog < handle
             str = sprintf('Datamesh catalog with %d datasources:', length(obj.ids));
             for i = 1:length(obj.ids)
                 feature = obj.geojson.features(i);
+                timerange = obj.Timerange(i);
+                extent = obj.Extent(i);
+                boundingbox = num2str(extent{1});
                 % Prefer explicit feature name when available
                 if isfield(feature.properties, 'name')
                     name = feature.properties.name;
                 else
                     name = feature.id;
                 end
-                str = sprintf('%s\n %s [%s]', str, name, feature.id);
+                tstart =  timerange{1}{1}; % TODO: clean up time output so its more readable
+                tend = timerange{1}{2};
+                str = sprintf('%s\n %s [%s] \nTimerange: %s to %s \n Extent: %s,', str, name, ...
+                    feature.id, tstart, tend, boundingbox);
             end
         end
         
@@ -182,5 +202,6 @@ classdef Catalog < handle
           % idList - cell/array of identifiers stored in obj.ids
             idList = obj.ids;
         end
+        
     end
 end

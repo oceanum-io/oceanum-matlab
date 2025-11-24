@@ -35,7 +35,7 @@ classdef Connector < handle
                 verify logical = true
             end
 
-            %%%$ integrate into code later 
+            %%% implement into code later 
             user = NaN;
             gateway = getenv("DATAMESH_GATEWAY");
 
@@ -72,17 +72,21 @@ classdef Connector < handle
             fprintf('Datamesh connector created for %s\n', obj.host);
         end
 
-        function catalog = get_catalog(obj, search, limit)
+        function catalog = get_catalog(obj, search, timefilter, geofilter, limit)
           % GETCATALOG - Retrieve datasource catalog with optional search and limit
           %
           % Input arguments:
           % obj   - connector object with proto/host/authHeaders
           % search - optional search string (text scalar)
+          % timefilter - optional time filter search to restrict catalogue
+          % geofilter - optional geographic filter to restrict search
           % limit - optional numeric limit on returned items
             arguments
                 obj
                 search {mustBeTextScalar} = ''
-                limit double = []
+                timefilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement
+                geofilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement
+                limit int32 = NaN
             end
 
             % Build query parameters
@@ -110,6 +114,12 @@ classdef Connector < handle
             end
 
             catalog = oceanum.datamesh.Catalog(response.Body.Data, obj);
+
+            % Limit catalog size
+            if ~isnan(limit)
+                % need to implement
+            end 
+
         end
 
         function datasource = getDatasource(obj, datasourceId)

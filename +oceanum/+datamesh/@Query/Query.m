@@ -21,13 +21,13 @@ classdef Query < handle
     
     methods
         function obj = Query(varargin)
-          % QUERY - Construct a Query object from struct or name-value pairs
-          %
-          % Input arguments:
-          % varargin - either a single struct describing the object or name-value pairs
-          %
-          % Output arguments:
-          % obj      - initialized Query object
+            % QUERY - Construct a Query object from struct or name-value pairs
+            %
+            % Input arguments:
+            % varargin - either a single struct describing the object or name-value pairs
+            %
+            % Output arguments:
+            % obj      - initialized Query object
             arguments (Repeating)
                 varargin
             end
@@ -75,6 +75,10 @@ classdef Query < handle
         end
         
         function setFromStruct(obj, s)
+            % SETFROMSTRUCT - Populate object fields from a structure when present
+            %
+            % Input arguments:
+            % s - structure possibly containing any subset of object fields
             if isfield(s, 'datasource')
                 obj.datasource = s.datasource;
             end
@@ -117,9 +121,17 @@ classdef Query < handle
         end
         
         function s = toStruct(obj)
+            % TOSTRUCT - Convert object to struct, omitting empty properties
+            %
+            % Input arguments:
+             % obj - object whose public properties will be exported
+            %
+            % Output arguments:
+            % s   - struct containing non-empty property name/value pairs
             s = struct();
             
             props = properties(obj);
+            % Iterate over all public properties and copy non-empty ones
             for i = 1:length(props)
                 propName = props{i};
                 propValue = obj.(propName);
