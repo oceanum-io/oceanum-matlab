@@ -47,7 +47,7 @@ classdef Catalog < handle
             fprintf('%s\n', char(obj));
         end
         
-        function datasource = getDatasource(obj, datasourceId)
+        function datasource = get_datasource(obj, datasourceId)
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
@@ -67,11 +67,11 @@ classdef Catalog < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
         
-        function data = load(obj, datasourceId, varargin)
+        function data = load(obj, datasourceId, useDask)
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
-                options.useDask logical = false
+                useDask logical = false
             end
             
             if ~any(strcmp(obj.ids, datasourceId))
@@ -79,25 +79,25 @@ classdef Catalog < handle
                     'Datasource %s not found in catalog', datasourceId);
             end
             
-            data = obj.connector.loadDatasource(datasourceId, 'useDask', options.useDask);
+            data = obj.connector.loadDatasource(datasourceId, 'useDask', useDask);
         end
         
-        function result = query(obj, varargin)
+        function result = query(obj, datasource, variables, timefilter, geofilter, limit)
             arguments
                 obj
-                options.datasource {mustBeTextScalar} = ''
-                options.variables cell = {}
-                options.timefilter struct = struct.empty
-                options.geofilter struct = struct.empty
-                options.limit double = []
+                datasource {mustBeTextScalar} = ''
+                variables cell = {}
+                timefilter struct = struct.empty
+                geofilter struct = struct.empty
+                limit double = []
             end
             
             if ~any(strcmp(obj.ids, options.datasource))
                 error('oceanum:datamesh:Catalog:notFound', ...
-                    'Datasource %s not found in catalog', options.datasource);
+                    'Datasource %s not found in catalog', datasource);
             end
             
-            result = obj.connector.query(varargin{:});
+            result = obj.connector.query(datasource, variables, timefilter, geofilter, limit);
         end
         
         function idList = getIds(obj)

@@ -126,7 +126,7 @@ classdef Connector < handle
                 datasourceId {mustBeTextScalar}
             end
 
-            uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/', datasourceId]));
+            uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/', datasourceId));
             request = matlab.net.http.RequestMessage('GET', obj.authHeaders);
             response = send(request, uri);
 
