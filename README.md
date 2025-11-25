@@ -81,7 +81,7 @@ Compared to the Python library, this MATLAB version:
 
 ## Requirements
 
-- MATLAB R2019b or later (for `arguments` blocks)
+- MATLAB R2022b or later (for `arguments` blocks)
 - Or GNU Octave 6.0+ (basic compatibility)
 
 ## License
