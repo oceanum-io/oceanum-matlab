@@ -64,8 +64,8 @@ classdef Datasource < handle
             if isfield(props, 'created')
                 obj.created = props.created;
             end
-            if isfield(props, 'dataschema')
-                obj.dataschema = props.dataschema;
+            if isfield(props, 'schema')
+                obj.dataschema = props.schema;
             end
             if isfield(props, 'description')
                 obj.description = props.description;
@@ -76,8 +76,8 @@ classdef Datasource < handle
             if isfield(props, 'driver')
                 obj.driver = props.driver;
             end
-            if isfield(props, 'driver_args')
-                obj.driver_args = props.driver_args;
+            if isfield(props, 'args')
+                obj.driver_args = props.args;
             end
             if isfield(props, 'expires')
                 obj.expires = props.expires;
@@ -120,6 +120,13 @@ classdef Datasource < handle
             end
 
             % Assign Properties 
+            obj.attributes = props.metadata;
+
+            obj.bounds = props.geom.coordinates;
+
+
+            obj.geometry = NaN; % TODO: Implement GeoJSON display of bounds
+            obj.variables = props.schema.data_vars;
 
 
         end
@@ -127,16 +134,16 @@ classdef Datasource < handle
         function str = char(obj)
           % CHAR - Create a human-readable summary of the datasource object
             str = sprintf('Datasource: %s [%s]', obj.name, obj.id);
-            if ~isempty(obj.description)
-                str = sprintf('%s\nDescription: %s', str, obj.description);
-            end
+            % if ~isempty(obj.description)
+            %     str = sprintf('%s\nDescription: %s', str, obj.description);
+            % end
+            % Display extent and timerange of datasource
+            timerange = strcat(obj.tstart," to ", obj.tend);
+            str = sprintf("%s\nTimerange: %s",str ,timerange);
+
             if ~isempty(obj.variables)
               % Format variables differently for cell arrays vs. other types
-                if iscell(obj.variables)
-                    vars = strjoin(obj.variables, ', ');
-                else
-                    vars = jsonencode(obj.variables);
-                end
+                vars = string(length(fieldnames(obj.variables)));
                 str = sprintf('%s\nVariables: %s', str, vars);
             end
         end
