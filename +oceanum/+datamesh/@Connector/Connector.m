@@ -37,7 +37,6 @@ classdef Connector < handle
 
             %%% implement into code later 
             user = NaN;
-            gateway = getenv("DATAMESH_GATEWAY");
 
 
             if isempty(token)
@@ -67,7 +66,7 @@ classdef Connector < handle
             end
 
             % Set gateway
-            obj.gateway = [obj.service '/gateway/'];
+            obj.gateway = strcat(obj.service, '/gateway/');
 
             fprintf('Datamesh connector created for %s\n', obj.host);
         end
@@ -104,7 +103,6 @@ classdef Connector < handle
                 uri.Query = params;
             end
             method = matlab.net.http.RequestMethod.GET;
-            % header = matlab.net.http.HeaderField('Authorization', obj.authHeaders);
             request = matlab.net.http.RequestMessage(method, obj.authHeaders);
             response = send(request, uri);
 
@@ -122,7 +120,7 @@ classdef Connector < handle
 
         end
 
-        function datasource = getDatasource(obj, datasourceId)
+        function datasource = get_datasource(obj, datasourceId)
           % GETDATASOURCE - Retrieve a datasource by its identifier
           %
           % Input arguments:
@@ -252,14 +250,19 @@ classdef Connector < handle
             end
 
             % Convert to JSON and make request
+            
+
             jsonData = jsonencode(queryStruct);
-            uri = matlab.net.URI([obj.gateway, '/oceanql/']);
+            % uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/'));
+            uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/'));
+            
             headers = [obj.authHeaders, ... 
                       matlab.net.http.HeaderField('Content-Type', 'application/json'), ...
                       matlab.net.http.HeaderField('Accept', 'application/parquet')];
 
             body = matlab.net.http.MessageBody(jsonData);
-            request = matlab.net.http.RequestMessage('POST', headers, body);
+            method = matlab.net.http.RequestMethod.POST; % Work on this last cause its gonna be a pain...
+            request = matlab.net.http.RequestMessage(method, headers, body);
             response = send(request, uri);
 
             if response.StatusCode ~= matlab.net.http.StatusCode.OK

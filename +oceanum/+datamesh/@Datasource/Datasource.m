@@ -1,20 +1,32 @@
 classdef Datasource < handle
-    properties
-        id
-        name
-        description
-        geom
-        driver
-        driverArgs
-        variables
+    % Fields
+    properties (Access = public)
         coordinates
-        crs
-        tags
-        metadata
         created
-        updated
-        size
-        dlen
+        dataschema
+        description
+        details
+        driver
+        driver_args
+        expires
+        geom
+        id
+        info
+        labels
+        modified
+        name
+        parameters
+        parchive
+        pforecast
+        tags
+        tend
+        tstart
+    end
+    % Properties
+    properties (Access = public)
+        attributes
+        bounds
+        geometry
     end
     
     methods
