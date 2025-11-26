@@ -122,7 +122,10 @@ classdef Datasource < handle
             % Assign Properties 
             obj.attributes = props.metadata;
 
-            obj.bounds = props.geom.coordinates;
+            obj.bounds = [min(props.geom.coordinates(:,:,1)), ...
+                min(props.geom.coordinates(:,:,2)), ...
+                max(props.geom.coordinates(:,:,1)), ...
+                max(props.geom.coordinates(:,:,2))];
 
 
             obj.geometry = NaN; % TODO: Implement GeoJSON display of bounds
@@ -138,14 +141,21 @@ classdef Datasource < handle
             %     str = sprintf('%s\nDescription: %s', str, obj.description);
             % end
             % Display extent and timerange of datasource
+            bound = num2str(obj.bounds);
+            str = sprintf("%s\nExtent: %s",str , bound);
+            
             timerange = strcat(obj.tstart," to ", obj.tend);
-            str = sprintf("%s\nTimerange: %s",str ,timerange);
+            str = sprintf("%s\nTimerange: %s",str ,timerange); % TODO: Fix format.
+            
+            attribute = string(length(fieldnames(obj.attributes)));
+            str = sprintf("%s\nAttributes: %s",str ,attribute);
 
             if ~isempty(obj.variables)
               % Format variables differently for cell arrays vs. other types
                 vars = string(length(fieldnames(obj.variables)));
                 str = sprintf('%s\nVariables: %s', str, vars);
             end
+            
         end
         
         function disp(obj)
