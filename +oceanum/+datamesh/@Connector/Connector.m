@@ -83,8 +83,8 @@ classdef Connector < handle
             arguments
                 obj
                 search {mustBeTextScalar} = ''
-                timefilter dictionary = dictionary(nan,NaN) % need to implement
-                geofilter dictionary = dictionary(nan,NaN) % need to implement
+                timefilter string = [] % need to implement
+                geofilter dictionary = dictionary(string.empty, double.empty) % need to implement
                 limit int32 = NaN
             end
 
@@ -93,11 +93,19 @@ classdef Connector < handle
             if ~isempty(search)
                 params = [params, matlab.net.QueryParameter('search', search)];
             end
-            if ~isempty(limit)
+            if ~isnan(limit)
                 params = [params, matlab.net.QueryParameter('limit', string(limit))];
             end
-
-            
+            % This only implements the 'range' timefilter [tstart tend]
+            if ~isempty(timefilter)
+                if length(timefilter) < 2
+                    error("Timefilter must have a start and end time")
+                end
+                params = [params, matlab.net.QueryParameter('in_trange', timefilter)];
+            end
+            if ~isConfigured(geofilter)
+                
+            end
 
 
             % Make request
@@ -115,11 +123,6 @@ classdef Connector < handle
             end
 
             catalog = oceanum.datamesh.Catalog(response.Body.Data, obj);
-
-            % Limit catalog size
-            if ~isnan(limit)
-                % need to implement
-            end 
 
         end
 
