@@ -83,8 +83,8 @@ classdef Connector < handle
             arguments
                 obj
                 search {mustBeTextScalar} = ''
-                timefilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement
-                geofilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement
+                timefilter dictionary = dictionary(nan,NaN) % need to implement
+                geofilter dictionary = dictionary(nan,NaN) % need to implement
                 limit int32 = NaN
             end
 
@@ -96,6 +96,9 @@ classdef Connector < handle
             if ~isempty(limit)
                 params = [params, matlab.net.QueryParameter('limit', string(limit))];
             end
+
+            
+
 
             % Make request
             uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/'));
@@ -153,6 +156,7 @@ classdef Connector < handle
             props = data.properties;
             props.id = datasourceId;
             props.geom = data.geometry;
+            props.bbox = data.bbox;
 
             datasource = oceanum.datamesh.Datasource(props);
         end
@@ -160,6 +164,8 @@ classdef Connector < handle
         function data = loadDatasource(obj, datasourceId, useDask)
             % LOADDATASOURCE - Load data for a given datasource identifier
             %
+            % !!! IMPORTANT It is not possible to load large datasources
+            % into matlab due to size !!!
             % Input arguments:
             % obj          - object instance providing datasource access
             % datasourceId - text scalar identifier of the datasource
@@ -232,7 +238,7 @@ classdef Connector < handle
                 limit double = []
             end
 
-            
+            staging = oceanum.datamesh.Stage();
 
 
             % 
