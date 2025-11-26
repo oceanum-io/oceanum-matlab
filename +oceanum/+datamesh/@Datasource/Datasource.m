@@ -64,8 +64,10 @@ classdef Datasource < handle
             if isfield(props, 'created')
                 obj.created = props.created;
             end
-            if isfield(props, 'schema')
+            if isfield(props, 'schema') % alias
                 obj.dataschema = props.schema;
+            elseif isfield(props, 'dataschema')
+                obj.dataschema = props.dataschema;
             end
             if isfield(props, 'description')
                 obj.description = props.description;
@@ -76,8 +78,10 @@ classdef Datasource < handle
             if isfield(props, 'driver')
                 obj.driver = props.driver;
             end
-            if isfield(props, 'args')
+            if isfield(props, 'args') % alias
                 obj.driver_args = props.args;
+            elseif isfield(props, 'driver_args')
+                obj.driver_args = props.driver_args;
             end
             if isfield(props, 'expires')
                 obj.expires = props.expires;
