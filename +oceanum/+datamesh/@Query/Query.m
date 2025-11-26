@@ -234,3 +234,87 @@ classdef Query < handle
         end
     end
 end
+
+%% Helper functions (local)
+
+function dt = parse_time(v)
+% parse_time Convert input to MATLAB datetime (UTC or naive)
+    if isempty(v)
+        dt = [];
+        return
+    end
+    if isa(v,'datetime')
+        dt = v;
+        if isempty(dt.TimeZone)
+            % naive: treat as UTC then remove timezone to mimic pandas behavior
+            dt.TimeZone = 'UTC';
+        end
+        try
+            % convert to naive by clearing timezone
+            dt.TimeZone = '';
+        catch
+            % older MATLAB versions may not support clearing; ignore
+        end
+        return
+    end
+    if ischar(v) || isstring(v)
+        s = char(v);
+        % Try ISO8601 general parse, prefer automatic parsing
+        try
+            dt = datetime(s,'InputFormat','yyyy-MM-dd''T''HH:mm:ss','TimeZone','UTC');
+        catch
+            try
+                dt = datetime(s,'TimeZone','UTC');
+            catch ME
+                error('parse_time:Format','Timestamp format not valid: %s', ME.message);
+            end
+        end
+        try
+            dt.TimeZone = '';
+        catch
+        end
+        return
+    end
+    error('parse_time:Type','datetime or time string required');
+end
+
+function dur = parse_timedelta(v)
+% parse_timedelta Convert various inputs to MATLAB duration
+    if isempty(v)
+        dur = [];
+        return
+    end
+    if isa(v,'duration')
+        dur = v;
+        return
+    end
+    if isnumeric(v)
+        % treat numeric as seconds
+        dur = seconds(v);
+        return
+    end
+    if ischar(v) || isstring(v)
+        s = strtrim(char(v));
+        % attempt hh:MM:SS or days like '2D'
+        try
+            dur = duration(s);
+            return
+        catch
+            % attempt day format 'Nd' or 'Nday' or 'N D'
+            tok = regexp(s,'^(\d+)\s*[dD]$','tokens','once');
+            if ~isempty(tok)
+                n = str2double(tok{1});
+                dur = days(n);
+                return
+            end
+            % try sail through to parse as numeric seconds
+            num = str2double(s);
+            if ~isnan(num)
+                dur = seconds(num);
+                return
+            end
+            error('parse_timedelta:Format','Timedelta format not valid: %s', s);
+        end
+    end
+    error('parse_timedelta:Type','timedelta or time period string required');
+end

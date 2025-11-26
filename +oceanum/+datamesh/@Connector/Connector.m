@@ -232,68 +232,72 @@ classdef Connector < handle
                 limit double = []
             end
 
-            % Build query structure
-            queryStruct = struct();
-            queryStruct.datasource = datasource;
-
-            if ~isempty(variables)
-                queryStruct.variables = variables;
-            end
-            if ~isempty(timefilter)
-                queryStruct.timefilter = timefilter;
-            end
-            if ~isempty(geofilter)
-                queryStruct.geofilter = geofilter;
-            end
-            if ~isempty(limit)
-                queryStruct.limit = limit;
-            end
-
-            % Convert to JSON and make request
             
 
-            jsonData = jsonencode(queryStruct);
-            % uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/'));
-            uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/'));
-            
-            headers = [obj.authHeaders, ... 
-                      matlab.net.http.HeaderField('Content-Type', 'application/json'), ...
-                      matlab.net.http.HeaderField('Accept', 'application/parquet')];
 
-            body = matlab.net.http.MessageBody(jsonData);
-            method = matlab.net.http.RequestMethod.POST; % Work on this last cause its gonna be a pain...
-            request = matlab.net.http.RequestMessage(method, headers, body);
-            response = send(request, uri);
-
-            if response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('oceanum:datamesh:Connector:queryError', ...
-                    'Query failed with status %s', char(response.StatusCode));
-            end
-
-            % Save and read response data similar to loadDatasource
-            tempFile = [tempname '.parquet'];
-            try
-                fid = fopen(tempFile, 'wb');
-                fwrite(fid, response.Body.Data);
-                fclose(fid);
-
-                try
-                    result = readtable(tempFile, 'FileType', 'parquet');
-                catch
-                    warning('oceanum:datamesh:Connector:formatWarning', ...
-                        'Could not read query result as parquet');
-                    result = [];
-                end
-            catch ME
-                if exist(tempFile, 'file')
-                    delete(tempFile);
-                end
-                rethrow(ME);
-            end
-
-            if exist(tempFile, 'file')
-                delete(tempFile);
-            end
+            % 
+            % % Build query structure
+            % queryStruct = struct();
+            % queryStruct.datasource = datasource;
+            % 
+            % if ~isempty(variables)
+            %     queryStruct.variables = variables;
+            % end
+            % if ~isempty(timefilter)
+            %     queryStruct.timefilter = timefilter;
+            % end
+            % if ~isempty(geofilter)
+            %     queryStruct.geofilter = geofilter;
+            % end
+            % if ~isempty(limit)
+            %     queryStruct.limit = limit;
+            % end
+            % 
+            % % Convert to JSON and make request
+            % 
+            % 
+            % jsonData = jsonencode(queryStruct);
+            % % uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/'));
+            % uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/'));
+            % 
+            % headers = [obj.authHeaders, ... 
+            %           matlab.net.http.HeaderField('Content-Type', 'application/json'), ...
+            %           matlab.net.http.HeaderField('Accept', 'application/parquet')];
+            % 
+            % body = matlab.net.http.MessageBody(jsonData);
+            % method = matlab.net.http.RequestMethod.POST; % Work on this last cause its gonna be a pain...
+            % request = matlab.net.http.RequestMessage(method, headers, body);
+            % response = send(request, uri);
+            % 
+            % if response.StatusCode ~= matlab.net.http.StatusCode.OK
+            %     error('oceanum:datamesh:Connector:queryError', ...
+            %         'Query failed with status %s', char(response.StatusCode));
+            % end
+            % 
+            % % Save and read response data similar to loadDatasource
+            % tempFile = [tempname '.parquet'];
+            % try
+            %     fid = fopen(tempFile, 'wb');
+            %     fwrite(fid, response.Body.Data);
+            %     fclose(fid);
+            % 
+            %     try
+            %         result = readtable(tempFile, 'FileType', 'parquet');
+            %     catch
+            %         warning('oceanum:datamesh:Connector:formatWarning', ...
+            %             'Could not read query result as parquet');
+            %         result = [];
+            %     end
+            % catch ME
+            %     if exist(tempFile, 'file')
+            %         delete(tempFile);
+            %     end
+            %     rethrow(ME);
+            % end
+            % 
+            % if exist(tempFile, 'file')
+            %     delete(tempFile);
+            % end
         end
     end
 end
