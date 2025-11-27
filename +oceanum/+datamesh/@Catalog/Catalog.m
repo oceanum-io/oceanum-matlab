@@ -18,7 +18,7 @@ classdef Catalog < handle
     end
     
     methods
-        function obj = Catalog(geojsonData, connector, timefilter, geofilter, limit)
+        function obj = Catalog(geojsonData, connector)
             % CATALOG - Construct a Catalog from GeoJSON and a connector
             %
             % Input arguments:
@@ -27,9 +27,6 @@ classdef Catalog < handle
             arguments
                 geojsonData struct
                 connector oceanum.datamesh.Connector
-                timefilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement 
-                geofilter (1,2) {mustBeNumeric} = [NaN NaN] % need to implement (could be a dictionary need to check)
-                limit int32 = NaN
             end
             
             obj.geojson = geojsonData;
