@@ -1,4 +1,14 @@
 classdef Stage < handle
+    
+    % query: Query = Field(title="OceanQL query")
+    % qhash: str = Field(title="Query hash")
+    % formats: List[str] = Field(title="Available download formats")
+    % size: int = Field(title="Request size")
+    % dlen: int = Field(title="Domain size")
+    % coordmap: dict = Field(title="coordinates map")
+    % coordkeys: dict = Field(title="coordinates keys")
+    % container: Container = Field(title="Data container type")
+    % sig: str = Field(title="Signature hash")
     properties
         query
         qhash
@@ -44,6 +54,7 @@ classdef Stage < handle
             if isfield(data, 'sig')
                 obj.sig = data.sig;
             end
+            
         end
         
         function str = char(obj)

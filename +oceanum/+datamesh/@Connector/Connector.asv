@@ -83,8 +83,8 @@ classdef Connector < handle
             arguments
                 obj
                 search {mustBeTextScalar} = ''
-                timefilter string = [] % need to implement
-                geofilter dictionary = dictionary(string.empty, double.empty) % need to implement
+                timefilter string = [] 
+                geofilter = [] 
                 limit int32 = NaN
             end
 
@@ -97,14 +97,25 @@ classdef Connector < handle
                 params = [params, matlab.net.QueryParameter('limit', string(limit))];
             end
             % This only implements the 'range' timefilter [tstart tend]
+            % timefilter -> in_trange
             if ~isempty(timefilter)
-                if length(timefilter) < 2
-                    error("Timefilter must have a start and end time")
+                in_trange = obj.formatTimeFilterForInTrange(timefilter);
+                if ~isempty(in_trange)
+                    params = [params, matlab.net.QueryParameter('in_trange', in_trange)]; 
                 end
-                params = [params, matlab.net.QueryParameter('in_trange', string(timefilter(1)),string(timefilter(2)))];
             end
-            if ~isConfigured(geofilter)
-                
+            
+            % Copilot generated code... TODO: Fix so it works properly
+            % geofilter -> geom_intersects (accept WKT string or struct with .wkt)
+            if ~isempty(geofilter)
+                if ischar(geofilter) || isstring(geofilter)
+                    params(end+1) = matlab.net.QueryParameter('geom_intersects', char(geofilter)); 
+                elseif isstruct(geofilter) && isfield(geofilter,'wkt')
+                    params(end+1) = matlab.net.QueryParameter('geom_intersects', char(geofilter.wkt));
+                else
+                    error('oceanum:datamesh:Connector:BadGeoFilter', ...
+                        'geofilter must be a WKT string or a struct with field ''wkt''');
+                end
             end
 
 
@@ -125,6 +136,105 @@ classdef Connector < handle
             catalog = oceanum.datamesh.Catalog(response.Body.Data, obj);
 
         end
+
+        % Helper function
+        function s = formatTimeFilterForInTrange(~, timefilter)
+            % FORMATTIMEFILTERFORINTRANGE Convert various timefilter types to "startZ,endZ"
+            %
+            % Accepts:
+            %   - 1x2 datetime array
+            %   - cellstr / string-array with 2 elements
+            %   - struct with field 'times' (cell or array)
+            %   - single-element (treated as start with open end / or vice-versa)
+            %
+            % Returns '' on unknown input or failure.
+        
+            if isempty(timefilter)
+                s = '';
+                return;
+            end
+        
+            % Default extremes (match Python example)
+            defaultStart = datetime(1,1,1,'TimeZone','UTC');
+            defaultEnd   = datetime(2500,1,1,'TimeZone','UTC');
+        
+            % Extract candidate start/end values into a cell {start, end}
+            if isstruct(timefilter) && isfield(timefilter,'times')
+                times = timefilter.times;
+            else
+                times = timefilter;
+            end
+        
+            % Normalize into cell with up to 2 elements
+            if isa(times,'datetime')
+                times = num2cell(times);
+            elseif isstring(times)
+                times = cellstr(times);
+            elseif ischar(times)
+                times = {times};
+            end
+        
+            if iscell(times)
+                % ok
+            else
+                times = {times};
+            end
+        
+            % Ensure two elements
+            if numel(times) == 0
+                times = {[],[]};
+            elseif numel(times) == 1
+                times{2} = [];
+            else
+                times = times(1:2);
+            end
+        
+            startVal = times{1};
+            endVal   = times{2};
+        
+            % Parse/normalize start
+            try
+                if isempty(startVal)
+                    dtStart = defaultStart;
+                elseif isa(startVal,'datetime')
+                    dtStart = startVal;
+                    if isempty(dtStart.TimeZone), dtStart.TimeZone = 'UTC'; else dtStart.TimeZone = 'UTC'; end
+                else
+                    % Let datetime try to parse strings flexibly
+                    dtStart = datetime(startVal,'TimeZone','UTC');
+                    if isempty(dtStart.TimeZone), dtStart.TimeZone = 'UTC'; end
+                end
+            catch
+                dtStart = defaultStart;
+            end
+        
+            % Parse/normalize end
+            try
+                if isempty(endVal)
+                    dtEnd = defaultEnd;
+                elseif isa(endVal,'datetime')
+                    dtEnd = endVal;
+                    if isempty(dtEnd.TimeZone), dtEnd.TimeZone = 'UTC'; else dtEnd.TimeZone = 'UTC'; end
+                else
+                    dtEnd = datetime(endVal,'TimeZone','UTC');
+                    if isempty(dtEnd.TimeZone), dtEnd.TimeZone = 'UTC'; end
+                end
+            catch
+                dtEnd = defaultEnd;
+            end
+        
+            % If start > end, swap or error (we swap here)
+            if dtStart > dtEnd
+                tmp = dtStart; dtStart = dtEnd; dtEnd = tmp;
+            end
+        
+            % Format as "YYYY-MM-DDTHH:MM:SSZ" using datestr for broad compatibility
+            startStr = [datestr(dtStart, 'yyyy-mm-ddTHH:MM:SS') 'Z'];
+            endStr   = [datestr(dtEnd,   'yyyy-mm-ddTHH:MM:SS') 'Z'];
+        
+            s = sprintf('%s,%s', startStr, endStr);
+        end
+
 
         function datasource = get_datasource(obj, datasourceId)
           % GETDATASOURCE - Retrieve a datasource by its identifier
@@ -241,7 +351,7 @@ classdef Connector < handle
                 limit double = []
             end
 
-            staging = oceanum.datamesh.Stage();
+            
 
 
             % 
@@ -313,103 +423,4 @@ end
 
 
 
-% --- helper (add inside same methods block or private methods block) ---
-function s = formatTimeFilterForInTrange(~, timefilter)
-    % FORMATTIMEFILTERFORINTRANGE Convert various timefilter types to "startZ,endZ"
-    %
-    % Accepts:
-    %   - 1x2 datetime array
-    %   - cellstr / string-array with 2 elements
-    %   - struct with field 'times' (cell or array)
-    %   - single-element (treated as start with open end / or vice-versa)
-    %
-    % Returns '' on unknown input or failure.
-
-    if isempty(timefilter)
-        s = '';
-        return;
-    end
-
-    % Default extremes (match Python example)
-    defaultStart = datetime(1,1,1,'TimeZone','UTC');
-    defaultEnd   = datetime(2500,1,1,'TimeZone','UTC');
-
-    % Extract candidate start/end values into a cell {start, end}
-    if isstruct(timefilter) && isfield(timefilter,'times')
-        times = timefilter.times;
-    else
-        times = timefilter;
-    end
-
-    % Normalize into cell with up to 2 elements
-    if isa(times,'datetime')
-        times = num2cell(times);
-    elseif isstring(times)
-        times = cellstr(times);
-    elseif ischar(times)
-        times = {times};
-    end
-
-    if iscell(times)
-        % ok
-    else
-        times = {times};
-    end
-
-    % Ensure two elements
-    if numel(times) == 0
-        times = {[],[]};
-    elseif numel(times) == 1
-        times{2} = [];
-    else
-        times = times(1:2);
-    end
-
-    startVal = times{1};
-    endVal   = times{2};
-
-    % Parse/normalize start
-    try
-        if isempty(startVal)
-            dtStart = defaultStart;
-        elseif isa(startVal,'datetime')
-            dtStart = startVal;
-            if isempty(dtStart.TimeZone) 
-                dtStart.TimeZone = 'UTC'; 
-            else 
-                dtStart.TimeZone = 'UTC'; 
-        else
-            % Let datetime try to parse strings flexibly
-            dtStart = datetime(startVal,'TimeZone','UTC');
-            if isempty(dtStart.TimeZone), dtStart.TimeZone = 'UTC'; end
-        end
-    catch
-        dtStart = defaultStart;
-    end
-
-    % Parse/normalize end
-    try
-        if isempty(endVal)
-            dtEnd = defaultEnd;
-        elseif isa(endVal,'datetime')
-            dtEnd = endVal;
-            if isempty(dtEnd.TimeZone), dtEnd.TimeZone = 'UTC'; else dtEnd.TimeZone = 'UTC'; end
-        else
-            dtEnd = datetime(endVal,'TimeZone','UTC');
-            if isempty(dtEnd.TimeZone), dtEnd.TimeZone = 'UTC'; end
-        end
-    catch
-        dtEnd = defaultEnd;
-    end
-
-    % If start > end, swap or error (we swap here)
-    if dtStart > dtEnd
-        tmp = dtStart; dtStart = dtEnd; dtEnd = tmp;
-    end
-
-    % Format as "YYYY-MM-DDTHH:MM:SSZ" using datestr for broad compatibility
-    startStr = [datestr(dtStart, 'yyyy-mm-ddTHH:MM:SS') 'Z'];
-    endStr   = [datestr(dtEnd,   'yyyy-mm-ddTHH:MM:SS') 'Z'];
-
-    s = sprintf('%s,%s', startStr, endStr);
-end
+   
