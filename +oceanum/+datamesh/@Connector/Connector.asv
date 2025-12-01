@@ -333,94 +333,49 @@ classdef Connector < handle
         end
 
         function result = query(obj, datasource, variables, timefilter, geofilter, limit)
-          % QUERY - Build and execute a data query on the object datasource
-          %
-          % Input arguments:
-          % obj        - object providing query execution methods
-          % datasource - optional datasource name (text scalar)
-          % variables  - optional list of variable names (cell)
-          % timefilter - optional time filtering struct
-          % geofilter  - optional geographic filtering struct
-          % limit      - optional numeric result limit
-            arguments
-                obj
-                datasource {mustBeTextScalar} = ''
-                variables cell = {}
-                timefilter struct = struct.empty
-                geofilter struct = struct.empty
-                limit double = []
-            end
+        % QUERY - Build and execute a data query on the object datasource
+        %
+        % This implementation avoids any "import matlab.*" statements and does
+        % HTTP POSTs using Java URLConnection so it works on older MATLAB
+        % releases that lack matlab.net.http or when you cannot use import.
+        %
+        % Input arguments:
+        %   obj        - connector object (must expose obj.gateway and obj.token,
+        %                and optionally obj.authHeaders as a cell array of pairs)
+        %   datasource - optional datasource name (text scalar)
+        %   variables  - optional list of variable names (cell)
+        %   timefilter - optional time filtering (see code for supported simple forms)
+        %   geofilter  - optional geographic filtering (WKT string or struct)
+        %   limit      - optional numeric result limit
+        %
+        % Output:
+        %   result - either a MATLAB table (if parquet could be read) or a
+        %            filepath to the downloaded payload (parquet or netCDF)
+        arguments
+            obj
+            datasource {mustBeTextScalar} = ''
+            variables cell = {}
+            timefilter = struct.empty
+            geofilter = struct.empty
+            limit double = []
+        end
+    
+        % Build the Query struct
+        q = struct();
+        if ~isempty(datasource)
+            q.datasource = char(datasource);
+        end
+        if ~isempty(variables)
+            q.variables = variables;
+        end
+        if ~isempty(limit)
+            q.limit = limit;
+        end
 
-            
-
-
-            % 
-            % % Build query structure
-            % queryStruct = struct();
-            % queryStruct.datasource = datasource;
-            % 
-            % if ~isempty(variables)
-            %     queryStruct.variables = variables;
-            % end
-            % if ~isempty(timefilter)
-            %     queryStruct.timefilter = timefilter;
-            % end
-            % if ~isempty(geofilter)
-            %     queryStruct.geofilter = geofilter;
-            % end
-            % if ~isempty(limit)
-            %     queryStruct.limit = limit;
-            % end
-            % 
-            % % Convert to JSON and make request
-            % 
-            % 
-            % jsonData = jsonencode(queryStruct);
-            % % uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/'));
-            % uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/'));
-            % 
-            % headers = [obj.authHeaders, ... 
-            %           matlab.net.http.HeaderField('Content-Type', 'application/json'), ...
-            %           matlab.net.http.HeaderField('Accept', 'application/parquet')];
-            % 
-            % body = matlab.net.http.MessageBody(jsonData);
-            % method = matlab.net.http.RequestMethod.POST; % Work on this last cause its gonna be a pain...
-            % request = matlab.net.http.RequestMessage(method, headers, body);
-            % response = send(request, uri);
-            % 
-            % if response.StatusCode ~= matlab.net.http.StatusCode.OK
-            %     error('oceanum:datamesh:Connector:queryError', ...
-            %         'Query failed with status %s', char(response.StatusCode));
-            % end
-            % 
-            % % Save and read response data similar to loadDatasource
-            % tempFile = [tempname '.parquet'];
-            % try
-            %     fid = fopen(tempFile, 'wb');
-            %     fwrite(fid, response.Body.Data);
-            %     fclose(fid);
-            % 
-            %     try
-            %         result = readtable(tempFile, 'FileType', 'parquet');
-            %     catch
-            %         warning('oceanum:datamesh:Connector:formatWarning', ...
-            %             'Could not read query result as parquet');
-            %         result = [];
-            %     end
-            % catch ME
-            %     if exist(tempFile, 'file')
-            %         delete(tempFile);
-            %     end
-            %     rethrow(ME);
-            % end
-            % 
-            % if exist(tempFile, 'file')
-            %     delete(tempFile);
-            % end
+        
         end
     end
 end
 
 
 
-   

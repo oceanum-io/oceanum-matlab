@@ -126,10 +126,7 @@ classdef Datasource < handle
             % Assign Properties 
             obj.attributes = props.metadata;
 
-            obj.bounds = [min(props.geom.coordinates(:,:,1)), ...
-                min(props.geom.coordinates(:,:,2)), ...
-                max(props.geom.coordinates(:,:,1)), ...
-                max(props.geom.coordinates(:,:,2))];
+            obj.bounds = props.bbox;
 
 
             obj.geometry = NaN; % TODO: Implement GeoJSON display of bounds
@@ -144,10 +141,14 @@ classdef Datasource < handle
             % if ~isempty(obj.description)
             %     str = sprintf('%s\nDescription: %s', str, obj.description);
             % end
+
             % Display extent and timerange of datasource
             bound = num2str(obj.bounds);
+            vector_dim = size(obj.bounds);
+            if  vector_dim(1) ~= 1 
+                bound = num2str(obj.bounds');
+            end
             str = sprintf("%s\nExtent: %s",str , bound);
-            
             timerange = strcat(obj.tstart," to ", obj.tend);
             str = sprintf("%s\nTimerange: %s",str ,timerange); % TODO: Fix format.
             

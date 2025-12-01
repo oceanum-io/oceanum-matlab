@@ -333,249 +333,56 @@ classdef Connector < handle
         end
 
         function result = query(obj, datasource, variables, timefilter, geofilter, limit)
-          % QUERY - Build and execute a data query on the object datasource
-          %
-          % Input arguments:
-          % obj        - object providing query execution methods
-          % datasource - optional datasource name (text scalar)
-          % variables  - optional list of variable names (cell)
-          % timefilter - optional time filtering struct
-          % geofilter  - optional geographic filtering struct
-          % limit      - optional numeric result limit
-            arguments
-                obj
-                datasource {mustBeTextScalar} = ''
-                variables cell = {}
-                timefilter struct = struct.empty
-                geofilter struct = struct.empty
-                limit int32 = []
+        % QUERY - Build and execute a data query on the object datasource
+        %
+        % This implementation avoids any "import matlab.*" statements and does
+        % HTTP POSTs using Java URLConnection so it works on older MATLAB
+        % releases that lack matlab.net.http or when you cannot use import.
+        %
+        % Input arguments:
+        %   obj        - connector object (must expose obj.gateway and obj.token,
+        %                and optionally obj.authHeaders as a cell array of pairs)
+        %   datasource - optional datasource name (text scalar)
+        %   variables  - optional list of variable names (cell)
+        %   timefilter - optional time filtering (see code for supported simple forms)
+        %   geofilter  - optional geographic filtering (WKT string or struct)
+        %   limit      - optional numeric result limit
+        %
+        % Output:
+        %   result - either a MATLAB table (if parquet could be read) or a
+        %            filepath to the downloaded payload (parquet or netCDF)
+        arguments
+            obj
+            datasource {mustBeTextScalar} = ''
+            variables cell = {}
+            timefilter string = []
+            geofilter = struct.empty
+            limit double = []
+        end
+    
+        % Build the Query struct
+        q = struct();
+        if ~isempty(datasource)
+            q.datasource = char(datasource);
+        end
+        if ~isempty(variables)
+            q.variables = variables;
+        end
+        if ~isempty(limit)
+            q.limit = limit;
+        end
+        if ~isempty(timefilter)
+            in_trange = obj.formatTimeFilterForInTrange(timefilter);
+            if ~isempty(in_trange)
+                q.timerange = in_trange; 
             end
-              % Build query struct
-              q = struct();
-              if ~isempty(datasource)
-                  q.datasource = char(datasource);
-              end
-              if ~isempty(variables)
-                  q.variables = variables;
-              end
-              if ~isempty(limit)
-                  q.limit = limit;
-              end
-            
-              % Normalize timefilter
-              if ~isempty(timefilter)
-                  % Accept:
-                  %  - struct with field 'times' and optional 'type'
-                  %  - 1x2 datetime array or cell/strings {'start','end'} -> treat as range
-                  if isstruct(timefilter) && isfield(timefilter,'times')
-                      q.timefilter = timefilter;
-                  else
-                      % try to coerce simple forms into a TimeFilter-like struct
-                      timesCell = {};
-                      if isa(timefilter,'datetime')
-                          timesCell = num2cell(timefilter);
-                      elseif iscell(timefilter)
-                          timesCell = timefilter;
-                      elseif isstring(timefilter)
-                          timesCell = cellstr(timefilter);
-                      elseif ischar(timefilter)
-                          timesCell = {timefilter};
-                      elseif isnumeric(timefilter) && numel(timefilter)==2
-                          % treat numeric inputs as datenum-style
-                          try
-                              timesCell = { datetime(timefilter(1), 'ConvertFrom','datenum'), ...
-                                            datetime(timefilter(2), 'ConvertFrom','datenum') };
-                          catch
-                              timesCell = {};
-                          end
-                      end
-            
-                      % ensure two elements for range (open-ended allowed via empty element)
-                      if numel(timesCell) == 0
-                          % ignore if not parsable
-                      else
-                          if numel(timesCell) == 1
-                              timesCell{2} = [];
-                          end
-                          % convert datetimes to ISO strings
-                          isoTimes = cell(1,2);
-                          for ii = 1:2
-                              t = timesCell{ii};
-                              if isempty(t)
-                                  isoTimes{ii} = [];
-                              elseif isa(t,'datetime')
-                                  % force UTC and format without fractional seconds
-                                  if isempty(t.TimeZone)
-                                      t.TimeZone = 'UTC';
-                                  else
-                                      t.TimeZone = 'UTC';
-                                  end
-                                  isoTimes{ii} = [datestr(t, 'yyyy-mm-ddTHH:MM:SS') 'Z'];
-                              else
-                                  % assume string; pass through
-                                  isoTimes{ii} = char(t);
-                              end
-                          end
-                          q.timefilter = struct('type','range','times',{isoTimes});
-                      end
-                  end
-              end
-            
-              % Normalize geofilter
-              if ~isempty(geofilter)
-                  % Accept:
-                  %  - char/string WKT (we wrap into a minimal struct)
-                  %  - struct with fields 'type' and 'geom' (assumed already suitable)
-                  if ischar(geofilter) || isstring(geofilter)
-                      q.geofilter = struct('type','feature','geom',char(geofilter));
-                  elseif isstruct(geofilter)
-                      % pass through basic struct (assumed to match the API shape)
-                      q.geofilter = geofilter;
-                  else
-                      error('oceanum:datamesh:Connector:BadGeoFilter', ...
-                          'geofilter must be a WKT string or a struct compatible with the API');
-                  end
-              end
-            
-              % JSON encode
-              jsonData = jsonencode(q);
-            
-              % Endpoint
-              
-
-            
-              % Build headers: combine auth headers and content headers
-              try
-                  authFields = obj.authHeaders; % expected to be HeaderField array in class
-              catch
-                  authFields = matlab.net.http.HeaderField('Authorization', ['Token ' char(obj.token)]);
-              end
-              headers = [authFields, HeaderField('Content-Type', 'application/json'), HeaderField('Accept', 'application/parquet')];
+        end
         
-              req = RequestMessage(RequestMethod.POST, headers, MessageBody(jsonData));
-              uri = URI(endpoint);
-              resp = req.send(uri);
-        
-              if resp.StatusCode ~= matlab.net.http.StatusCode.OK
-                  error('oceanum:datamesh:Connector:queryError', 'Query failed with status %s', char(resp.StatusCode));
-              end
-        
-              payload = resp.Body.Data;
-      
-            
-              % If payload is a MATLAB struct/table (JSON-decoded), return it directly
-              if isstruct(payload) || istable(payload)
-                  result = payload;
-                  return;
-              end
-            
-              % Otherwise we expect binary (parquet/netcdf). Save to temp file and attempt to parse.
-              tmpFile = [tempname, '.dat'];
-              fid = fopen(tmpFile, 'wb');
-              if fid == -1
-                  error('oceanum:datamesh:Connector:tmpfile', 'Could not create temporary file for payload');
-              end
-              try
-                  if isa(payload, 'uint8')
-                      fwrite(fid, payload, 'uint8');
-                  elseif ischar(payload) || isstring(payload)
-                      fwrite(fid, char(payload), 'uint8');
-                  elseif iscell(payload) && isa(payload{1}, 'uint8')
-                      fwrite(fid, payload{1}, 'uint8');
-                  else
-                      % attempt to write generic numeric data
-                      fwrite(fid, typecast(payload(:),'uint8'), 'uint8');
-                  end
-                  fclose(fid);
-              catch ME
-                  fclose(fid);
-                  delete(tmpFile);
-                  rethrow(ME);
-              end
-            
-              % Try parse parquet (if supported), else return filepath
-              try
-                  tbl = readtable(tmpFile, 'FileType', 'parquet');
-                  result = tbl;
-                  delete(tmpFile);
-                  return;
-              catch
-                  % not parsable as parquet in this MATLAB, return filepath
-                  result = tmpFile;
-                  return;
-              end
-            
+        uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/oceanql/'));
 
-            
-
-
-            % 
-            % % Build query structure
-            % queryStruct = struct();
-            % queryStruct.datasource = datasource;
-            % 
-            % if ~isempty(variables)
-            %     queryStruct.variables = variables;
-            % end
-            % if ~isempty(timefilter)
-            %     queryStruct.timefilter = timefilter;
-            % end
-            % if ~isempty(geofilter)
-            %     queryStruct.geofilter = geofilter;
-            % end
-            % if ~isempty(limit)
-            %     queryStruct.limit = limit;
-            % end
-            % 
-            % % Convert to JSON and make request
-            % 
-            % 
-            % jsonData = jsonencode(queryStruct);
-            % % uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/datasource/'));
-            % uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/'));
-            % 
-            % headers = [obj.authHeaders, ... 
-            %           matlab.net.http.HeaderField('Content-Type', 'application/json'), ...
-            %           matlab.net.http.HeaderField('Accept', 'application/parquet')];
-            % 
-            % body = matlab.net.http.MessageBody(jsonData);
-            % method = matlab.net.http.RequestMethod.POST; % Work on this last cause its gonna be a pain...
-            % request = matlab.net.http.RequestMessage(method, headers, body);
-            % response = send(request, uri);
-            % 
-            % if response.StatusCode ~= matlab.net.http.StatusCode.OK
-            %     error('oceanum:datamesh:Connector:queryError', ...
-            %         'Query failed with status %s', char(response.StatusCode));
-            % end
-            % 
-            % 
-            % tempFile = [tempname '.parquet'];
-            % try
-            %     fid = fopen(tempFile, 'wb');
-            %     fwrite(fid, response.Body.Data);
-            %     fclose(fid);
-            % 
-            %     try
-            %         result = readtable(tempFile, 'FileType', 'parquet');
-            %     catch
-            %         warning('oceanum:datamesh:Connector:formatWarning', ...
-            %             'Could not read query result as parquet');
-            %         result = [];
-            %     end
-            % catch ME
-            %     if exist(tempFile, 'file')
-            %         delete(tempFile);
-            %     end
-            %     rethrow(ME);
-            % end
-            % 
-            % if exist(tempFile, 'file')
-            %     delete(tempFile);
-            % end
         end
     end
 end
 
 
 
-   
