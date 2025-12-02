@@ -66,20 +66,20 @@ classdef Connector < handle
             end
 
             % Set gateway
-            obj.gateway = strcat(obj.service, '/gateway/');
+            obj.gateway = 'https://gateway.datamesh.oceanum.io';
 
             fprintf('Datamesh connector created for %s\n', obj.host);
         end
 
         function catalog = get_catalog(obj, search, timefilter, geofilter, limit)
-          % GETCATALOG - Retrieve datasource catalog with optional search and limit
-          %
-          % Input arguments:
-          % obj   - connector object with proto/host/authHeaders
-          % search - optional search string (text scalar)
-          % timefilter - optional time filter search to restrict catalogue
-          % geofilter - optional geographic filter to restrict search
-          % limit - optional numeric limit on returned items
+            % GETCATALOG - Retrieve datasource catalog with optional search and limit
+            %
+            % Input arguments:
+            % obj   - connector object with proto/host/authHeaders
+            % search - optional search string (text scalar)
+            % timefilter - optional time filter search to restrict catalogue
+            % geofilter - optional geographic filter to restrict search
+            % limit - optional numeric limit on returned items
             arguments
                 obj
                 search {mustBeTextScalar} = ''
@@ -235,7 +235,6 @@ classdef Connector < handle
             s = sprintf('%s,%s', startStr, endStr);
         end
 
-
         function datasource = get_datasource(obj, datasourceId)
           % GETDATASOURCE - Retrieve a datasource by its identifier
           %
@@ -332,57 +331,84 @@ classdef Connector < handle
             end
         end
 
-        function result = query(obj, datasource, variables, timefilter, geofilter, limit)
-        % QUERY - Build and execute a data query on the object datasource
-        %
-        % This implementation avoids any "import matlab.*" statements and does
-        % HTTP POSTs using Java URLConnection so it works on older MATLAB
-        % releases that lack matlab.net.http or when you cannot use import.
-        %
-        % Input arguments:
-        %   obj        - connector object (must expose obj.gateway and obj.token,
-        %                and optionally obj.authHeaders as a cell array of pairs)
-        %   datasource - optional datasource name (text scalar)
-        %   variables  - optional list of variable names (cell)
-        %   timefilter - optional time filtering (see code for supported simple forms)
-        %   geofilter  - optional geographic filtering (WKT string or struct)
-        %   limit      - optional numeric result limit
-        %
-        % Output:
-        %   result - either a MATLAB table (if parquet could be read) or a
-        %            filepath to the downloaded payload (parquet or netCDF)
-        arguments
-            obj
-            datasource {mustBeTextScalar} = ''
-            variables cell = {}
-            timefilter string = []
-            geofilter = struct.empty
-            limit double = []
-        end
-    
-        % Build the Query struct
-        q = struct();
-        if ~isempty(datasource)
-            q.datasource = char(datasource);
-        end
-        if ~isempty(variables)
-            q.variables = variables;
-        end
-        if ~isempty(limit)
-            q.limit = limit;
-        end
-        if ~isempty(timefilter)
-            in_trange = obj.formatTimeFilterForInTrange(timefilter);
-            if ~isempty(in_trange)
-                q.timerange = in_trange; 
+        function result = query(obj, query_input)
+            % QUERY - Build and execute a data query on the object datasource
+            % %%datasource, variables, timefilter, geofilter, limit, 
+            % This implementation avoids any "import matlab.*" statements and does
+            % HTTP POSTs using Java URLConnection so it works on older MATLAB
+            % releases that lack matlab.net.http or when you cannot use import.
+            %
+            % Input arguments:
+            %   obj        - connector object (must expose obj.gateway and obj.token,
+            %                and optionally obj.authHeaders as a cell array of pairs)
+            %   datasource - optional datasource name (text scalar)
+            %   variables  - optional list of variable names (cell)
+            %   timefilter - optional time filtering (see code for supported simple forms)
+            %   geofilter  - optional geographic filtering (WKT string or struct)
+            %   limit      - optional numeric result limit
+            %   varargin   - optional additional parameters such 
+            %
+            % Output:
+            %   result - either a MATLAB table (if parquet could be read) or a
+            %            filepath to the downloaded payload (parquet or netCDF)
+            % arguments
+            %     obj
+            %     datasource {mustBeTextScalar} = ''
+            %     variables cell = {}
+            %     timefilter string = []
+            %     geofilter = struct.empty
+            %     limit double = []
+            % end
+            arguments
+                obj
+                query_input = struct.empty
             end
-        end
         
-        uri = matlab.net.URI(strcat(obj.proto, '://', obj.host, '/oceanql/'));
+            % convert input into datamesh query
+            if string(class(varargin)) ~= "oceanum.datamesh.Query"
+                query_input = oceanum.datamesh.Query(query_input);
+            end
+
+
+            % build URI and JSON
+
+            JSONquery = query_input.toJson();
+
+
+
+            disp(JSONquery)
+
+            uri = matlab.net.URI(strcat(regexprep(obj.gateway,'/+$',''), '/oceanql', '/stage/'));
+
+            % build headers (ensure obj.authHeaders is HeaderField array)
+            headers = [ obj.authHeaders, ...
+                        matlab.net.http.HeaderField('Content-Type','application/json') ];
+
+            % create RequestMessage with MessageBody wrapper for JSON
+            request = matlab.net.http.RequestMessage( ...
+                        matlab.net.http.RequestMethod.POST, ...
+                        headers, ...
+                        matlab.net.http.MessageBody(JSONquery));
+            disp(request)
+            % send request
+            stage_response = send(request,uri);
+
+            % handle responses (204 = no content)
+            if stage_response.StatusCode == matlab.net.http.StatusCode.NoContent
+                % no data
+                result = [];
+                return;
+            end
+
+            if stage_response.StatusCode ~= matlab.net.http.StatusCode.OK
+                error('oceanum:datamesh:Connector:queryError', ...
+                      'Query failed with status %s', char(stage_response.StatusCode));
+            end
+
+            % successful: response body available
+            result = stage_response.Body.Data;
 
         end
     end
 end
-
-
 

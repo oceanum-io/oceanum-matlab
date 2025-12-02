@@ -20,58 +20,21 @@ classdef Query < handle
     end
     
     methods
-        function obj = Query(varargin)
+        function obj = Query(query_)
             % QUERY - Construct a Query object from struct or name-value pairs
             %
             % Input arguments:
-            % varargin - either a single struct describing the object or name-value pairs
+            % query_ - either a single struct describing the object or name-value pairs
             %
             % Output arguments:
             % obj      - initialized Query object
             arguments (Repeating)
-                varargin
+                query_
+            end
+            if isfield(query_,"datasource")
+                
             end
             
-            % Parse input arguments
-            if nargin >= 1
-                if isstruct(varargin{1})
-                    % Input is a struct
-                    s = varargin{1};
-                    obj.setFromStruct(s);
-                elseif ischar(varargin{1}) || isstring(varargin{1})
-                    % Parse name-value pairs into expected properties
-                    p = inputParser;
-                    addParameter(p, 'datasource', '', @(x) ischar(x) || isstring(x));
-                    addParameter(p, 'parameters', struct(), @isstruct);
-                    addParameter(p, 'description', '', @(x) ischar(x) || isstring(x));
-                    addParameter(p, 'variables', {}, @iscell);
-                    addParameter(p, 'timefilter', struct.empty, @isstruct);
-                    addParameter(p, 'geofilter', struct.empty, @isstruct);
-                    addParameter(p, 'levelfilter', struct.empty, @isstruct);
-                    addParameter(p, 'coordfilter', {}, @iscell);
-                    addParameter(p, 'crs', '', @(x) ischar(x) || isstring(x) || isnumeric(x));
-                    addParameter(p, 'aggregate', struct.empty, @isstruct);
-                    addParameter(p, 'functions', {}, @iscell);
-                    addParameter(p, 'limit', [], @isnumeric);
-                    addParameter(p, 'id', '', @(x) ischar(x) || isstring(x));
-                    
-                    parse(p, varargin{:});
-                    
-                    obj.datasource = p.Results.datasource;
-                    obj.parameters = p.Results.parameters;
-                    obj.description = p.Results.description;
-                    obj.variables = p.Results.variables;
-                    obj.timefilter = p.Results.timefilter;
-                    obj.geofilter = p.Results.geofilter;
-                    obj.levelfilter = p.Results.levelfilter;
-                    obj.coordfilter = p.Results.coordfilter;
-                    obj.crs = p.Results.crs;
-                    obj.aggregate = p.Results.aggregate;
-                    obj.functions = p.Results.functions;
-                    obj.limit = p.Results.limit;
-                    obj.id = p.Results.id;
-                end
-            end
         end
         
         function setFromStruct(obj, s)
