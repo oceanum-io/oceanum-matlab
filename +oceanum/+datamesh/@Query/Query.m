@@ -24,62 +24,90 @@ classdef Query < handle
             % QUERY - Construct a Query object from struct or name-value pairs
             %
             % Input arguments:
-            % query_ - either a single struct describing the object or name-value pairs
+            % query_ - a single struct describing the object
             %
             % Output arguments:
             % obj      - initialized Query object
-            arguments (Repeating)
+            arguments
                 query_
             end
+
             if isfield(query_,"datasource")
-                
+                obj.datasource = query_.datasource;
+            else
+                error("A datasource must be provided")
             end
             
-        end
-        
-        function setFromStruct(obj, s)
-            % SETFROMSTRUCT - Populate object fields from a structure when present
-            %
-            % Input arguments:
-            % s - structure possibly containing any subset of object fields
-            if isfield(s, 'datasource')
-                obj.datasource = s.datasource;
+            if isfield(query_,"parameters")
+                obj.parameters = query_.parameters;
+            else
+                obj.parameters = [];
             end
-            if isfield(s, 'parameters')
-                obj.parameters = s.parameters;
+
+            if isfield(query_, "description")
+                obj.description = query_.description;
+            else
+                obj.description = [];
             end
-            if isfield(s, 'description')
-                obj.description = s.description;
+
+            if isfield(query_, "variables")
+                obj.variables = query_.variables;
+            else
+                obj.variables = [];
             end
-            if isfield(s, 'variables')
-                obj.variables = s.variables;
+
+            if isfield(query_, "timefilter")
+                obj.timefilter = query_.timefilter;
+            else
+                obj.timefilter = [];
             end
-            if isfield(s, 'timefilter')
-                obj.timefilter = s.timefilter;
+            
+            if isfield(query_, "geofilter")
+                obj.geofilter = query_.geofilter;
+            else
+                obj.geofilter = [];
             end
-            if isfield(s, 'geofilter')
-                obj.geofilter = s.geofilter;
+            
+            if isfield(query_, "levelfilter")
+                obj.levelfilter = query_.levelfilter;
+            else
+                obj.levelfilter = [];
             end
-            if isfield(s, 'levelfilter')
-                obj.levelfilter = s.levelfilter;
+            
+            if isfield(query_, "coordfilter")
+                obj.coordfilter = query_.coordfilter;
+            else
+                obj.coordfilter = [];
             end
-            if isfield(s, 'coordfilter')
-                obj.coordfilter = s.coordfilter;
+            
+            if isfield(query_, "crs")
+                obj.crs = query_.crs;
+            else
+                obj.crs = [];
             end
-            if isfield(s, 'crs')
-                obj.crs = s.crs;
+            
+            if isfield(query_, "aggregate")
+                obj.aggregate = query_.aggregate;
+            else
+                obj.aggregate = [];
             end
-            if isfield(s, 'aggregate')
-                obj.aggregate = s.aggregate;
+            
+            if isfield(query_, "functions")
+                obj.functions = query_.functions;
+            else 
+                obj.functions = [];
             end
-            if isfield(s, 'functions')
-                obj.functions = s.functions;
+            
+            if isfield(query_, "limit")
+                obj.limit = query_.limit;
+            else 
+                obj.limit = [];
             end
-            if isfield(s, 'limit')
-                obj.limit = s.limit;
-            end
-            if isfield(s, 'id')
-                obj.id = s.id;
+            
+            if isfield(query_, "id")
+                obj.id = query_.id;
+            else
+                obj.id = [];
             end
         end
         

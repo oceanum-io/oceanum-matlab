@@ -67,7 +67,7 @@ classdef Stage < handle
             end
             if ~isempty(obj.formats)
                 if iscell(obj.formats)
-                    formats = strjoin(obj.formats, ', ');
+                    forhttps://datamesh.oceanum.io/oceanq1/stage/mats = strjoin(obj.formats, ', ');
                 else
                     formats = jsonencode(obj.formats);
                 end

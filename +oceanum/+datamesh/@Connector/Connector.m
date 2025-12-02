@@ -66,7 +66,9 @@ classdef Connector < handle
             end
 
             % Set gateway
-            obj.gateway = 'https://gateway.datamesh.oceanum.io';
+            obj.gateway = service;
+
+            % Setup session 
 
             fprintf('Datamesh connector created for %s\n', obj.host);
         end
@@ -361,11 +363,11 @@ classdef Connector < handle
             % end
             arguments
                 obj
-                query_input = struct.empty
+                query_input
             end
         
             % convert input into datamesh query
-            if string(class(varargin)) ~= "oceanum.datamesh.Query"
+            if string(class(query_input)) ~= "oceanum.datamesh.Query"
                 query_input = oceanum.datamesh.Query(query_input);
             end
 
@@ -378,12 +380,14 @@ classdef Connector < handle
 
             disp(JSONquery)
 
-            uri = matlab.net.URI(strcat(regexprep(obj.gateway,'/+$',''), '/oceanql', '/stage/'));
+            uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/stage/'));
 
             % build headers (ensure obj.authHeaders is HeaderField array)
             headers = [ obj.authHeaders, ...
-                        matlab.net.http.HeaderField('Content-Type','application/json') ];
-
+                        ];
+                        %matlab.net.http.HeaderField('Content-Type','application/json'), ...
+                        %matlab.net.http.HeaderField('Accept', 'application/json')];
+            disp(matlab.net.http.MessageBody(JSONquery))
             % create RequestMessage with MessageBody wrapper for JSON
             request = matlab.net.http.RequestMessage( ...
                         matlab.net.http.RequestMethod.POST, ...
