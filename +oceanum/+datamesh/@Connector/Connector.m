@@ -381,12 +381,11 @@ classdef Connector < handle
             disp(JSONquery)
 
             uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/stage/'));
-
+            disp(uri)
             % build headers (ensure obj.authHeaders is HeaderField array)
             headers = [ obj.authHeaders, ...
-                        ];
-                        %matlab.net.http.HeaderField('Content-Type','application/json'), ...
-                        %matlab.net.http.HeaderField('Accept', 'application/json')];
+                        matlab.net.http.HeaderField('Content-Type','application/json'), ...
+                        matlab.net.http.HeaderField('Accept', 'application/json')];
             disp(matlab.net.http.MessageBody(JSONquery))
             % create RequestMessage with MessageBody wrapper for JSON
             request = matlab.net.http.RequestMessage( ...
