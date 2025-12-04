@@ -385,18 +385,21 @@ classdef Connector < handle
             
             % build headers (ensure obj.authHeaders is HeaderField array)
             headers = [ session_data.addHeader(obj.authHeaders), ...
-                        matlab.net.http.HeaderField('Content-Type','application/json')];%, ...
-                        %matlab.net.http.HeaderField('Accept', 'application/json')];
-            disp(matlab.net.http.MessageBody(JSONquery))
+                        matlab.net.http.field.ContentTypeField('application/json'), ...
+                        matlab.net.http.HeaderField('accept', 'application/json')];
+            
+            message = matlab.net.http.MessageBody(JSONquery);
+            head_coded_message = '{"datasource":"oceanum-sea-level-rise","parameters":{},"description":null,"variables":null,"timefilter":null,"geofilter":null,"levelfilter":null,"coordfilter":null,"crs":null,"aggregate":null,"functions":[],"limit":null,"id":null}';
+
             % create RequestMessage with MessageBody wrapper for JSON
             request = matlab.net.http.RequestMessage( ...
-                        matlab.net.http.RequestMethod.POST, ...
-                        headers, ...
-                        matlab.net.http.MessageBody(string(JSONquery)));
+                        'POST', ...
+                        obj.authHeaders, ...
+                        matlab.net.http.MessageBody(head_coded_message));
             disp(request)
             % send request
             stage_response = send(request,uri);
-
+        
             % handle responses (204 = no content)
             if stage_response.StatusCode == matlab.net.http.StatusCode.NoContent
                 % no data
