@@ -58,9 +58,9 @@ classdef Connector < handle
 
             % Set up authentication headers
             if startsWith(token, 'Bearer ')
-                obj.authHeaders = matlab.net.http.HeaderField('Authorization', token);
+                obj.authHeaders = matlab.net.http.HeaderField('Authorization ', token);
             else
-                obj.authHeaders = [matlab.net.http.HeaderField('Authorization', strcat('Token ', token)), ...                    
+                obj.authHeaders = [matlab.net.http.HeaderField('Authorization', strcat('Token'," ", token)), ...                    
                     matlab.net.http.HeaderField('X-DATAMESH-TOKEN', token)];
 
             end
@@ -375,23 +375,24 @@ classdef Connector < handle
             % build URI and JSON
 
             JSONquery = query_input.toJson();
-
+            session_data = obj.session(obj);
+            disp(class(JSONquery))
 
 
             disp(JSONquery)
 
-            uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/stage/'));
-            disp(uri)
+            uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
+            
             % build headers (ensure obj.authHeaders is HeaderField array)
-            headers = [ obj.authHeaders, ...
-                        matlab.net.http.HeaderField('Content-Type','application/json'), ...
-                        matlab.net.http.HeaderField('Accept', 'application/json')];
+            headers = [ session_data.addHeader(obj.authHeaders), ...
+                        matlab.net.http.HeaderField('Content-Type','application/json')];%, ...
+                        %matlab.net.http.HeaderField('Accept', 'application/json')];
             disp(matlab.net.http.MessageBody(JSONquery))
             % create RequestMessage with MessageBody wrapper for JSON
             request = matlab.net.http.RequestMessage( ...
                         matlab.net.http.RequestMethod.POST, ...
                         headers, ...
-                        matlab.net.http.MessageBody(JSONquery));
+                        matlab.net.http.MessageBody(string(JSONquery)));
             disp(request)
             % send request
             stage_response = send(request,uri);
@@ -410,6 +411,38 @@ classdef Connector < handle
 
             % successful: response body available
             result = stage_response.Body.Data;
+
+        end
+    end
+    methods (Static)
+        function user_session = session(obj,duration)
+            arguments
+                obj
+                duration int32 = NaN
+            end
+            % Get session id
+            headers = [obj.authHeaders, matlab.net.http.HeaderField('Cache-Control', "no-store")];
+            params = struct("duration",NaN,"allow_multiwrite", false);
+            if ~isnan(duration)
+                params.duration = duration;
+            end
+            uri = matlab.net.URI(strcat(obj.service, '/session/'));
+            request = matlab.net.http.RequestMessage('GET', headers);
+            response = send(request,uri);
+            if response.StatusCode == matlab.net.http.StatusCode.NotFound
+                error('oceanum:datamesh:Connector:notFound', ...
+                    'Datasource %s not found', datasourceId);
+            elseif response.StatusCode == matlab.net.http.StatusCode.Unauthorized
+                error('oceanum:datamesh:Connector:unauthorized', ...
+                    'Not authorized to access datasource %s', datasourceId);
+            elseif response.StatusCode ~= matlab.net.http.StatusCode.OK
+                error('oceanum:datamesh:Connector:requestError', ...
+                    'Request failed with status %s', char(response.StatusCode));
+            end
+            data = response.Body.Data;
+
+            user_session = oceanum.datamesh.Session(data,obj);
+
 
         end
     end

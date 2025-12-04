@@ -380,7 +380,7 @@ classdef Connector < handle
 
             disp(JSONquery)
 
-            uri = matlab.net.URI(strcat(obj.gateway, '/oceanql/stage/'));
+            uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
             disp(uri)
             % build headers (ensure obj.authHeaders is HeaderField array)
             headers = [ obj.authHeaders, ...
@@ -390,8 +390,8 @@ classdef Connector < handle
             % create RequestMessage with MessageBody wrapper for JSON
             request = matlab.net.http.RequestMessage( ...
                         matlab.net.http.RequestMethod.POST, ...
-                        headers, ...
-                        matlab.net.http.MessageBody(JSONquery));
+                        obj.authHeaders, ...
+                        JSONquery);
             disp(request)
             % send request
             stage_response = send(request,uri);
@@ -412,93 +412,23 @@ classdef Connector < handle
             result = stage_response.Body.Data;
 
         end
-        function stage = oceanql_stage_short(conn, query)
-        % OCEANQL_STAGE_SHORT Post Query to /oceanql/stage/ and return Stage struct.
-        % stage = oceanql_stage_short(conn, query)
-        % - conn must expose .gateway and either .authHeaders (cell or HeaderField) or .token
-        % - query can be struct, JSON char, or object with toJSON()/toStruct()
-        %
-        % Compact implementation using Java HTTP to work on older MATLABs.
-            if ischar(query) || isstring(query)
-                JSON = char(query);
-            elseif isobject(query) && ismethod(query,'toJSON')
-                JSON = char(query.toJSON());
-            elseif isobject(query) && ismethod(query,'toStruct')
-                JSON = jsonencode(query.toStruct());
-            elseif isstruct(query)
-                JSON = jsonencode(query);
-            else
-                error('oceanum:datamesh:BadQueryInput','Unsupported query input type');
+    end
+    methods (Static)
+        function user_session = session(obj,duration)
+            arguments
+                obj
+                duration int32 = NaN
             end
-        
-            URL = [regexprep(conn.gateway,'/+$','') '/oceanql/stage/'];
-            headers = build_headers(conn);
-        
-            try
-                resp = java_post_json(URL, JSON, headers);
-            catch ME
-                throwAsCaller(ME);
+            % Get session id
+            headers = [obj.authHeaders, matlab.net.http.HeaderField('Cache-Control', "no-store")];
+            params = struct("duration",NaN,"allow_multiwrite", false);
+            if ~isnan(duration)
+                params.duration = duration;
             end
-        
-            stage = resp;
-        end
-        
-        %% ---------- helpers (kept small) ----------
-        function hdr = build_headers(conn)
-            hdr = {};
-            if isprop(conn,'authHeaders') && ~isempty(conn.authHeaders)
-                ah = conn.authHeaders;
-                if iscell(ah)
-                    if size(ah,2)==2, hdr = ah; return; end
-                    hdr = reshape(ah,2,[])';
-                    return;
-                elseif isa(ah,'matlab.net.http.HeaderField')
-                    hdr = {char(ah.Name), char(ah.Value)}; return;
-                end
-            end
-            if isprop(conn,'token') && ~isempty(conn.token)
-                t = char(conn.token);
-                if startsWith(t,'Bearer ','IgnoreCase',true)
-                    hdr = {'Authorization', t};
-                else
-                    hdr = {'Authorization', ['Token ' t]; 'X-DATAMESH-TOKEN', t};
-                end
-            end
-            % ensure Content-Type
-            % convert linear pairs to Nx2 if needed
-            if isempty(hdr)
-                hdr = {'Content-Type','application/json'};
-            else
-                if size(hdr,2)==2
-                    % Nx2 already
-                    hasCT = any(strcmpi(hdr(:,1),'Content-Type'));
-                    if ~hasCT, hdr(end+1,:) = {'Content-Type','application/json'}; end
-                else
-                    % linear pairs -> append content-type pair
-                    hdr = [hdr, {'Content-Type','application/json'}];
-                    hdr = reshape(hdr,2,[])';
-                end
-            end
-        end
-        
-        function js = java_post_json(urlStr, jsonStr, headerPairs)
-            url = java.net.URL(urlStr);
-            conn = url.openConnection();
-            conn.setDoOutput(true);
-            try, conn.setRequestMethod('POST'); end
-            % set headers (support Nx2 or linear)
-            if isempty(headerPairs)
-                headerPairs = {'Content-Type','application/json'};
-            end
-            if size(headerPairs,2)==2
-                for ii=1:size(headerPairs,1)
-                    conn.setRequestProperty(char(headerPairs{ii,1}), char(headerPairs{ii,2}));
-                end
-            else
-                for ii=1:2:numel(headerPairs)
-                    conn.setRequestProperty(char(headerPairs{ii}), char(headerPairs{ii+1}));
-                end
-            end
+            uri = matlab.net.URI(strcat(obj.service, '/session/');
+            
+
+
         end
     end
 end
