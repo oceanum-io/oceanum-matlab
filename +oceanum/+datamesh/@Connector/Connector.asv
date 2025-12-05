@@ -343,44 +343,25 @@ classdef Connector < handle
             % Input arguments:
             %   obj        - connector object (must expose obj.gateway and obj.token,
             %                and optionally obj.authHeaders as a cell array of pairs)
-            %   datasource - optional datasource name (text scalar)
-            %   variables  - optional list of variable names (cell)
-            %   timefilter - optional time filtering (see code for supported simple forms)
-            %   geofilter  - optional geographic filtering (WKT string or struct)
-            %   limit      - optional numeric result limit
-            %   varargin   - optional additional parameters such 
+            %   query_input - struct with query inputs
             %
             % Output:
             %   result - either a MATLAB table (if parquet could be read) or a
             %            filepath to the downloaded payload (parquet or netCDF)
-            % arguments
-            %     obj
-            %     datasource {mustBeTextScalar} = ''
-            %     variables cell = {}
-            %     timefilter string = []
-            %     geofilter = struct.empty
-            %     limit double = []
-            % end
             arguments
                 obj
-                query_input
+                query_input struct
             end
         
             % convert input into datamesh query
-            if string(class(query_input)) ~= "oceanum.datamesh.Query"
-                query_input = oceanum.datamesh.Query(query_input);
-            end
+            % if string(class(query_input)) ~= "oceanum.datamesh.Query"
+            %     query_input = oceanum.datamesh.Query(query_input);
+            % end
+            
 
-
-            % build URI and JSON
-
-            JSONquery = query_input.toJson();
+            % build URI and messagebody for stage request
+            queryStructure = matlab.net.http.MessageBody(query_input);
             session_data = obj.session(obj);
-            disp(class(JSONquery))
-
-
-            disp(JSONquery)
-
             uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
             
             % build headers (ensure obj.authHeaders is HeaderField array)
@@ -388,15 +369,14 @@ classdef Connector < handle
                         matlab.net.http.field.ContentTypeField('application/json'), ...
                         matlab.net.http.HeaderField('accept', 'application/json')];
             
-            message = matlab.net.http.MessageBody(JSONquery);
-            hard_coded_message = '{"datasource":"oceanum-sea-level-rise","parameters":{},"description":null,"variables":null,"timefilter":null,"geofilter":null,"levelfilter":null,"coordfilter":null,"crs":null,"aggregate":null,"functions":[],"limit":null,"id":null}';
-
+            
+            hard_coded_message = matlab.net.http.MessageBody(struct("datasource","oceanum-sea-level-rise"));
             % create RequestMessage with MessageBody wrapper for JSON
             request = matlab.net.http.RequestMessage( ...
                         'POST', ...
-                        obj.authHeaders, ...
-                        matlab.net.http.MessageBody(hard_coded_message));
-            disp(request)
+                        headers, ...
+                        queryStructure);
+           
             % send request
             stage_response = send(request,uri);
         
@@ -413,8 +393,36 @@ classdef Connector < handle
             end
 
             % successful: response body available
-            result = stage_response.Body.Data;
+            stage_results = stage_response.Body.Data;
+            query_size_limit = 1000000000; % 1 GB
 
+            if stage_results.size > query_size_limit
+                error('oceanum:datamesh:Connector:queryError', ...
+                      'Query failed with status due to query size being %s', char(stage_results.size))
+            end
+            
+            % build URI and messagebody for query request
+            queryStructure = matlab.net.http.MessageBody(query_input);
+            session_data = obj.session(obj);
+            uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
+            
+            % build headers (ensure obj.authHeaders is HeaderField array)
+            headers = [ session_data.addHeader(obj.authHeaders), ...
+                        matlab.net.http.field.ContentTypeField('application/json'), ...
+                        matlab.net.http.HeaderField('accept', 'application/json')];
+            
+            
+            hard_coded_message = matlab.net.http.MessageBody(struct("datasource","oceanum-sea-level-rise"));
+            % create RequestMessage with MessageBody wrapper for JSON
+            request = matlab.net.http.RequestMessage( ...
+                        'POST', ...
+                        headers, ...
+                        queryStructure);
+           
+            % send request
+            stage_response = send(request,uri);
+
+            
         end
     end
     methods (Static)
