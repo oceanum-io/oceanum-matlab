@@ -19,6 +19,7 @@ classdef Connector < handle
         verify
         proto
         host
+        user
     end
 
     methods
@@ -34,10 +35,6 @@ classdef Connector < handle
                 service {mustBeTextScalar} = 'https://datamesh.oceanum.io'
                 verify logical = true
             end
-
-            %%% implement into code later 
-            user = NaN;
-
 
             if isempty(token)
                 error('oceanum:datamesh:Connector:missingToken', ...
@@ -69,6 +66,7 @@ classdef Connector < handle
             obj.gateway = service;
 
             % Setup session 
+            obj.user = obj.session(obj);
 
             fprintf('Datamesh connector created for %s\n', obj.host);
         end
@@ -275,7 +273,7 @@ classdef Connector < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
 
-        function data = loadDatasource(obj, datasourceId, useDask)
+        function data = loadDatasource(obj, datasourceId)
             % LOADDATASOURCE - Load data for a given datasource identifier
             %
             % !!! IMPORTANT It is not possible to load large datasources
@@ -290,13 +288,64 @@ classdef Connector < handle
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
-                useDask logical = false % Need to see if this works in MATLAB...
             end
 
             % For MATLAB implementation, we'll fetch the data directly
             % since MATLAB doesn't have the same async/dask capabilities
-            uri = matlab.net.URI([obj.gateway '/data/' datasourceId]);
-            headers = [obj.authHeaders matlab.net.http.HeaderField('Accept', 'application/parquet')];
+            
+
+            % build URI and messagebody for stage request
+            query_input = struct("datasource",datasourceId);
+            queryStructure = matlab.net.http.MessageBody(query_input);
+            session_data = obj.session(obj);
+            uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
+            
+            % build headers (ensure obj.authHeaders is HeaderField array)
+            headers = [ session_data.addHeader(obj.authHeaders), ...
+                        matlab.net.http.field.ContentTypeField('application/json'), ...
+                        matlab.net.http.HeaderField('accept', 'application/json')];
+
+            % create RequestMessage with MessageBody wrapper for JSON
+                request = matlab.net.http.RequestMessage( ...
+                        'POST', ...
+                        headers, ...
+                        queryStructure);
+           
+            % send request
+            stage_response = send(request,uri);
+        
+             % handle responses (204 = no content)
+            if stage_response.StatusCode == matlab.net.http.StatusCode.NoContent
+                % no data
+                data = [];
+                return;
+            end
+
+            if stage_response.StatusCode ~= matlab.net.http.StatusCode.OK
+                error('oceanum:datamesh:Connector:queryError', ...
+                      'Query failed with status %s', char(stage_response.StatusCode));
+            end
+
+            % successful: response body available
+            stage_results = stage_response.Body.Data;
+            size_limit = 1000000000; % 1 GB
+            row_limit = 2000000; 
+
+       
+            % if datasource is too big for memory
+            if stage_results.size > size_limit
+                error('oceanum:datamesh:Connector:LoadDatasourceError', ...
+                      'Load failed due to datasource size being %s which is gretaer than the 1 GB limit', char(stage_results.size))
+            end
+
+            % if datasource has too many rows to load in.
+            if stage_results.dlen > row_limit
+                warning('oceanum:datamesh:Connector:LoadDatasourceWarning', ...
+                      'Datasource limited to 2000000 rows, not all data may be returned. Use a more specific query.')
+            end
+
+            uri = matlab.net.URI(strcat(obj.gateway, '/data/', datasourceId));
+            headers = [obj.authHeaders matlab.net.http.HeaderField('Accept', 'application/json')];
             request = matlab.net.http.RequestMessage('GET', headers);
             response = send(request, uri);
 
@@ -306,7 +355,8 @@ classdef Connector < handle
             end
 
             % Save response to temporary file and read with readtable
-            tempFile = [tempname, '.parquet'];
+            % TODO: Fix saving
+            tempFile = [tempname, '.json'];
             try
                 fid = fopen(tempFile, 'wb');
                 fwrite(fid, response.Body.Data);
@@ -368,9 +418,7 @@ classdef Connector < handle
             headers = [ session_data.addHeader(obj.authHeaders), ...
                         matlab.net.http.field.ContentTypeField('application/json'), ...
                         matlab.net.http.HeaderField('accept', 'application/json')];
-            
-            
-            hard_coded_message = matlab.net.http.MessageBody(struct("datasource","oceanum-sea-level-rise"));
+
             % create RequestMessage with MessageBody wrapper for JSON
                 request = matlab.net.http.RequestMessage( ...
                         'POST', ...
@@ -395,10 +443,15 @@ classdef Connector < handle
             % successful: response body available
             stage_results = stage_response.Body.Data;
             query_size_limit = 1000000000; % 1 GB
+            row_limit = 2000000;
 
             if stage_results.size > query_size_limit
                 error('oceanum:datamesh:Connector:queryError', ...
                       'Query failed due to query size being %s which is gretaer than the 1 GB limit', char(stage_results.size))
+            end
+            if stage_results.dlen > row_limit
+                warning('oceanum:datamesh:Connector:queryWarning', ...
+                      'Query limited to 2000000 rows, not all data may be returned. Use a more specific query.')
             end
             
             % build URI and messagebody for query request
