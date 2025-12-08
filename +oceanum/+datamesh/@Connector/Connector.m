@@ -88,7 +88,7 @@ classdef Connector < handle
                 obj
                 search {mustBeTextScalar} = ''
                 timefilter string = [] 
-                geofilter = [] 
+                geofilter = struct.empty 
                 limit int32 = NaN
             end
 
@@ -108,7 +108,6 @@ classdef Connector < handle
                 end
             end
             
-            % Copilot generated code... TODO: Fix so it works properly
             % geofilter -> geom_intersects (accept WKT string or struct with .wkt)
             if ~isempty(geofilter)
                 if ischar(geofilter) || isstring(geofilter)
