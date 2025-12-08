@@ -99,7 +99,6 @@ classdef Connector < handle
                 params = [params, matlab.net.QueryParameter('limit', string(limit))];
             end
             % This only implements the 'range' timefilter [tstart tend]
-            % timefilter -> in_trange
             if ~isempty(timefilter)
                 in_trange = obj.formatTimeFilterForInTrange(timefilter);
                 if ~isempty(in_trange)
@@ -275,7 +274,7 @@ classdef Connector < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
 
-        function data = loadDatasource(obj, datasourceId, size_limit, row_limit)
+        function data = load_datasource(obj, datasourceId, size_limit, row_limit)
             % LOADDATASOURCE - Load data for a given datasource identifier
             %
             % !!! IMPORTANT It is not possible to load large datasources
@@ -354,7 +353,6 @@ classdef Connector < handle
 
         function result = query(obj, query_input, query_size_limit, row_limit)
             % QUERY - Build and execute a data query on the object datasource
-           
             %
             % Input arguments:
             %   obj                 - connector object
@@ -402,6 +400,8 @@ classdef Connector < handle
            
             % send request
             query_response = send(request,uri);
+            
+            % Return results
             result = query_response.Body.Data;
             
         end
@@ -410,12 +410,12 @@ classdef Connector < handle
         function user_session = session(obj,duration)
           % SESSION - Create or retrieve a user session for given duration
           %
-          % Input arguments:
-          % obj      - session manager object
-          % duration - requested session duration in seconds (int32), NaN for default
+          % Inputs:
+          %     obj             - session manager object
+          %     duration        - requested session duration in seconds (int32), NaN for default
           %
-          % Output arguments:
-          % user_session - handle or struct describing the created/retrieved session
+          % Outputs:
+          %     user_session    - handle or struct describing the created/retrieved session
             arguments
                 obj
                 duration int32 = NaN
@@ -446,16 +446,27 @@ classdef Connector < handle
         end
 
         function stage_results = stage_request(obj,query_input)
+            % STAGE_REQUEST posts the stage request from the OCEANQL server
+            % and returns the body of the data.
+            %
+            % Inputs:
+            %   obj             - Datamesh connector 
+            %   query_input     - Query inputs as a MATLAB Structure.
+            %
+            % Outputs:
+            %   stage_results   - A structure with the results of the
+            %                     staged datasource.
             arguments
                 obj
                 query_input struct
             end
+
             % build URI and messagebody for stage request
             queryStructure = matlab.net.http.MessageBody(query_input);
             session_data = obj.session(obj);
             uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
             
-            % build headers (ensure obj.authHeaders is HeaderField array)
+            % build headers
             headers = [session_data.addHeader(obj.authHeaders), ...
                         matlab.net.http.field.ContentTypeField('application/json'), ...
                         matlab.net.http.HeaderField('accept', 'application/json')];

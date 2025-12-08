@@ -5,12 +5,12 @@ classdef Connector < handle
     %   catalog, retrieve and load datasources, and run queries.
     %
     %   Methods:
-    %       getCatalog    - Retrieve available datasources
-    %       getDatasource - Fetch metadata for a datasource
-    %       loadDatasource- Download datasource contents
+    %       get_catalog    - Retrieve available datasources
+    %       get_datasource - Fetch metadata for a datasource
+    %       load_datasource- Download datasource contents
     %       query         - Run OceanQL queries against gateway
     %
-    %   See also matlab.net.URI, matlab.net.http.RequestMessage
+    %   See also https://docs.oceanum.io/docs/index
     properties (Access=private)
         token % Datamesh Token
         service 
@@ -24,12 +24,14 @@ classdef Connector < handle
 
     methods
         function obj = Connector(token, service, verify)
-          % CONNECTOR - Construct a Connector for the DataMesh service
+          % CONNECTOR constructs a connector for the DataMesh service
           %
-          % Input arguments:
-          % token   - API token (text scalar). Defaults to DATAMESH_TOKEN env var.
-          % service - Service base URL (text scalar). Defaults to production URL.
-          % verify  - Logical flag to verify TLS certificates (true/false).
+          % Inputs:
+          %     token   - API token (text scalar). Defaults to DATAMESH_TOKEN env var.
+          %     service - Service base URL (text scalar). Defaults to production URL.
+          %     verify  - Logical flag to verify TLS certificates (true/false).
+          % Outputs:
+          %     connector object
             arguments
                 token {mustBeTextScalar} = getenv('DATAMESH_TOKEN')
                 service {mustBeTextScalar} = 'https://datamesh.oceanum.io'
@@ -74,7 +76,7 @@ classdef Connector < handle
         function catalog = get_catalog(obj, search, timefilter, geofilter, limit)
             % GETCATALOG - Retrieve datasource catalog with optional search and limit
             %
-            % Input arguments:
+            % Inputs:
             %   obj   - connector object with proto/host/authHeaders
             %   search - optional search string (text scalar)
             %   timefilter - optional time filter search to restrict catalogue
@@ -99,7 +101,6 @@ classdef Connector < handle
                 params = [params, matlab.net.QueryParameter('limit', string(limit))];
             end
             % This only implements the 'range' timefilter [tstart tend]
-            % timefilter -> in_trange
             if ~isempty(timefilter)
                 in_trange = obj.formatTimeFilterForInTrange(timefilter);
                 if ~isempty(in_trange)
@@ -150,6 +151,7 @@ classdef Connector < handle
             %   - single-element (treated as start with open end / or vice-versa)
             %
             % Returns '' on unknown input or failure.
+            % Written by Copilot.
         
             if isempty(timefilter)
                 s = '';
@@ -238,7 +240,7 @@ classdef Connector < handle
         end
 
         function datasource = get_datasource(obj, datasourceId)
-          % GETDATASOURCE - Retrieve a datasource by its identifier
+          % GETDATASOURCE retrieves a datasource by its identifier
           %
           % Inputs:
           %     obj          - Connector instance providing datasource access
@@ -275,11 +277,11 @@ classdef Connector < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
 
-        function data = loadDatasource(obj, datasourceId, size_limit, row_limit)
-            % LOADDATASOURCE - Load data for a given datasource identifier
+        function data = load_datasource(obj, datasourceId, size_limit, row_limit)
+            % LOADDATASOURCE loads data for a given datasource identifier
+            % IMPORTANT, It is not possible to load large datasources
+            % into MATLAB due to size constraints
             %
-            % !!! IMPORTANT It is not possible to load large datasources
-            % into matlab due to size !!!
             % Input arguments:
             %   obj                 - object instance providing datasource access
             %   datasourceId        - text scalar identifier of the datasource
@@ -287,7 +289,7 @@ classdef Connector < handle
             %   row_limit           - Optional parameter row limit of query
             %
             % Output arguments:
-            %   data - loaded datasource content
+            %   data                - loaded datasource content
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
@@ -353,7 +355,7 @@ classdef Connector < handle
         end
 
         function result = query(obj, query_input, query_size_limit, row_limit)
-            % QUERY - Build and execute a data query on the object datasource
+            % QUERY builds and execute a data query on the object datasource
             %
             % Input arguments:
             %   obj                 - connector object
@@ -373,6 +375,11 @@ classdef Connector < handle
             
             % Get stage query to check if query is within size limits
             stage_results = obj.stage_request(obj,query_input);
+            if isempty(stage_results)
+                error('oceanum:datamesh:Connector:queryError', ...
+                      'Could not find queried datasource')
+            end
+
 
             if stage_results.size > query_size_limit
                 error('oceanum:datamesh:Connector:queryError', ...
@@ -389,7 +396,7 @@ classdef Connector < handle
             uri = matlab.net.URI(strcat(obj.service, '/oceanql/'));
             
             % build headers (ensure obj.authHeaders is HeaderField array)
-            headers = [ session_data.addHeader(obj.authHeaders), ...
+            headers =  [session_data.addHeader(obj.authHeaders), ...
                         matlab.net.http.field.ContentTypeField('application/json'), ...
                         matlab.net.http.HeaderField('accept', 'application/json')];
             
@@ -401,13 +408,15 @@ classdef Connector < handle
            
             % send request
             query_response = send(request,uri);
+            
+            % Return results
             result = query_response.Body.Data;
             
         end
     end
     methods (Static)
         function user_session = session(obj,duration)
-          % SESSION - Create or retrieve a user session for given duration
+          % SESSION creates or retrieve a user session for given duration
           %
           % Inputs:
           %     obj             - session manager object
