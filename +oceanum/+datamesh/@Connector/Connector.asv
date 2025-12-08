@@ -75,11 +75,13 @@ classdef Connector < handle
             % GETCATALOG - Retrieve datasource catalog with optional search and limit
             %
             % Input arguments:
-            % obj   - connector object with proto/host/authHeaders
-            % search - optional search string (text scalar)
-            % timefilter - optional time filter search to restrict catalogue
-            % geofilter - optional geographic filter to restrict search
-            % limit - optional numeric limit on returned items
+            %   obj   - connector object with proto/host/authHeaders
+            %   search - optional search string (text scalar)
+            %   timefilter - optional time filter search to restrict catalogue
+            %   geofilter - optional geographic filter to restrict search
+            %   limit - optional numeric limit on returned items
+            % Outputs:
+            %   catalog - oceanum.datamesh.Catalog object of search results
             arguments
                 obj
                 search {mustBeTextScalar} = ''
@@ -238,12 +240,12 @@ classdef Connector < handle
         function datasource = get_datasource(obj, datasourceId)
           % GETDATASOURCE - Retrieve a datasource by its identifier
           %
-          % Input arguments:
-          % obj          - Connector instance providing datasource access
-          % datasourceId - text scalar identifier of the datasource
+          % Inputs:
+          %     obj          - Connector instance providing datasource access
+          %     datasourceId - text scalar identifier of the datasource
           %
-          % Output arguments:
-          % datasource   - the retrieved datasource object or struct
+          % Outputs:
+          %     datasource   - the retrieved datasource object or struct
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
@@ -273,65 +275,32 @@ classdef Connector < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
 
-        function data = loadDatasource(obj, datasourceId)
+        function data = loadDatasource(obj, datasourceId, size_limit, row_limit)
             % LOADDATASOURCE - Load data for a given datasource identifier
             %
             % !!! IMPORTANT It is not possible to load large datasources
             % into matlab due to size !!!
             % Input arguments:
-            % obj          - object instance providing datasource access
-            % datasourceId - text scalar identifier of the datasource
-            % useDask      - logical flag (ignored in MATLAB; placeholder)
+            %   obj                 - object instance providing datasource access
+            %   datasourceId        - text scalar identifier of the datasource
+            %   query_size_limit    - Optional parameter size limit of query
+            %   row_limit           - Optional parameter row limit of query
             %
             % Output arguments:
-            % data         - loaded datasource content
+            %   data - loaded datasource content
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
+                size_limit int64 = 1000000000; % 1 GB
+                row_limit int64 = 2000000; 
             end
 
             % For MATLAB implementation, we'll fetch the data directly
             % since MATLAB doesn't have the same async/dask capabilities
-            
 
-            % build URI and messagebody for stage request
-            query_input = struct("datasource",datasourceId);
-            queryStructure = matlab.net.http.MessageBody(query_input);
-            session_data = obj.session(obj);
-            uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
-            
-            % build headers (ensure obj.authHeaders is HeaderField array)
-            headers = [ session_data.addHeader(obj.authHeaders), ...
-                        matlab.net.http.field.ContentTypeField('application/json'), ...
-                        matlab.net.http.HeaderField('accept', 'application/json')];
+            % Get stage query to check if query is within size limits
+            stage_results = obj.stage_request(obj,query_input);
 
-            % create RequestMessage with MessageBody wrapper for JSON
-                request = matlab.net.http.RequestMessage( ...
-                        'POST', ...
-                        headers, ...
-                        queryStructure);
-           
-            % send request
-            stage_response = send(request,uri);
-        
-             % handle responses (204 = no content)
-            if stage_response.StatusCode == matlab.net.http.StatusCode.NoContent
-                % no data
-                data = [];
-                return;
-            end
-
-            if stage_response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('oceanum:datamesh:Connector:queryError', ...
-                      'Query failed with status %s', char(stage_response.StatusCode));
-            end
-
-            % successful: response body available
-            stage_results = stage_response.Body.Data;
-            size_limit = 1000000000; % 1 GB
-            row_limit = 2000000; 
-
-       
             % if datasource is too big for memory
             if stage_results.size > size_limit
                 error('oceanum:datamesh:Connector:LoadDatasourceError', ...
@@ -341,7 +310,7 @@ classdef Connector < handle
             % if datasource has too many rows to load in.
             if stage_results.dlen > row_limit
                 warning('oceanum:datamesh:Connector:LoadDatasourceWarning', ...
-                      'Datasource limited to 2000000 rows, not all data may be returned. Use a more specific query.')
+                      'Datasource limited to 2,000,000 rows, not all data may be returned. Use a more specific query.')
             end
 
             uri = matlab.net.URI(strcat(obj.gateway, '/data/', datasourceId));
@@ -355,6 +324,7 @@ classdef Connector < handle
             end
 
             % Save response to temporary file and read with readtable
+            % TODO: Fix saving
             tempFile = [tempname, '.json'];
             try
                 fid = fopen(tempFile, 'wb');
@@ -363,7 +333,7 @@ classdef Connector < handle
 
                 % Try to read as parquet, fallback to CSV if needed
                 try
-                    data = readtable(tempFile, 'FileType', 'parquet');
+                    data = readtable(tempFile, 'FileType');
                 catch
                     % If parquet reading fails, the data might be in a different format
                     warning('oceanum:datamesh:Connector:formatWarning', ...
@@ -382,67 +352,28 @@ classdef Connector < handle
             end
         end
 
-        function result = query(obj, query_input)
+        function result = query(obj, query_input, query_size_limit, row_limit)
             % QUERY - Build and execute a data query on the object datasource
-            % %%datasource, variables, timefilter, geofilter, limit, 
-            % This implementation avoids any "import matlab.*" statements and does
-            % HTTP POSTs using Java URLConnection so it works on older MATLAB
-            % releases that lack matlab.net.http or when you cannot use import.
+           
             %
             % Input arguments:
-            %   obj        - connector object (must expose obj.gateway and obj.token,
-            %                and optionally obj.authHeaders as a cell array of pairs)
-            %   query_input - struct with query inputs
+            %   obj                 - connector object
+            %   query_input         - structure with query inputs
+            %   query_size_limit    - Optional parameter size limit of query
+            %   row_limit           - Optional parameter row limit of query
             %
             % Output:
-            %   result - either a MATLAB table (if parquet could be read) or a
-            %            filepath to the downloaded payload (parquet or netCDF)
+            %   result              - either a MATLAB table (if parquet could be read) or a
+            %                         filepath to the downloaded payload (parquet or netCDF)
             arguments
                 obj
                 query_input struct
+                query_size_limit int64 = 1000000000; % 1 GB
+                row_limit int64 = 2000000;
             end
-        
-            % convert input into datamesh query
-            % if string(class(query_input)) ~= "oceanum.datamesh.Query"
-            %     query_input = oceanum.datamesh.Query(query_input);
-            % end
             
-
-            % build URI and messagebody for stage request
-            queryStructure = matlab.net.http.MessageBody(query_input);
-            session_data = obj.session(obj);
-            uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
-            
-            % build headers (ensure obj.authHeaders is HeaderField array)
-            headers = [ session_data.addHeader(obj.authHeaders), ...
-                        matlab.net.http.field.ContentTypeField('application/json'), ...
-                        matlab.net.http.HeaderField('accept', 'application/json')];
-
-            % create RequestMessage with MessageBody wrapper for JSON
-                request = matlab.net.http.RequestMessage( ...
-                        'POST', ...
-                        headers, ...
-                        queryStructure);
-           
-            % send request
-            stage_response = send(request,uri);
-        
-            % handle responses (204 = no content)
-            if stage_response.StatusCode == matlab.net.http.StatusCode.NoContent
-                % no data
-                result = [];
-                return;
-            end
-
-            if stage_response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('oceanum:datamesh:Connector:queryError', ...
-                      'Query failed with status %s', char(stage_response.StatusCode));
-            end
-
-            % successful: response body available
-            stage_results = stage_response.Body.Data;
-            query_size_limit = 1000000000; % 1 GB
-            row_limit = 2000000;
+            % Get stage query to check if query is within size limits
+            stage_results = obj.stage_request(obj,query_input);
 
             if stage_results.size > query_size_limit
                 error('oceanum:datamesh:Connector:queryError', ...
@@ -463,8 +394,6 @@ classdef Connector < handle
                         matlab.net.http.field.ContentTypeField('application/json'), ...
                         matlab.net.http.HeaderField('accept', 'application/json')];
             
-            
-            
             % create RequestMessage with MessageBody wrapper for JSON
             request = matlab.net.http.RequestMessage( ...
                         'POST', ...
@@ -479,10 +408,19 @@ classdef Connector < handle
     end
     methods (Static)
         function user_session = session(obj,duration)
+          % SESSION - Create or retrieve a user session for given duration
+          %
+          % Input arguments:
+          % obj      - session manager object
+          % duration - requested session duration in seconds (int32), NaN for default
+          %
+          % Output arguments:
+          % user_session - handle or struct describing the created/retrieved session
             arguments
                 obj
                 duration int32 = NaN
             end
+            
             % Get session id
             headers = [obj.authHeaders, matlab.net.http.HeaderField('Cache-Control', "no-store")];
             params = struct("duration",NaN,"allow_multiwrite", false);
@@ -505,8 +443,46 @@ classdef Connector < handle
             data = response.Body.Data;
 
             user_session = oceanum.datamesh.Session(data,obj);
+        end
 
+        function stage_results = stage_request(obj,query_input)
+            arguments
+                obj
+                query_input struct
+            end
+            % build URI and messagebody for stage request
+            queryStructure = matlab.net.http.MessageBody(query_input);
+            session_data = obj.session(obj);
+            uri = matlab.net.URI(strcat(obj.service, '/oceanql/stage/'));
+            
+            % build headers (ensure obj.authHeaders is HeaderField array)
+            headers = [session_data.addHeader(obj.authHeaders), ...
+                        matlab.net.http.field.ContentTypeField('application/json'), ...
+                        matlab.net.http.HeaderField('accept', 'application/json')];
 
+            % create RequestMessage with MessageBody wrapper for JSON
+                request = matlab.net.http.RequestMessage( ...
+                        'POST', ...
+                        headers, ...
+                        queryStructure);
+           
+            % send request
+            stage_response = send(request,uri);
+        
+            % handle responses (204 = no content)
+            if stage_response.StatusCode == matlab.net.http.StatusCode.NoContent
+                % no data
+                stage_results = [];
+                return;
+            end
+
+            if stage_response.StatusCode ~= matlab.net.http.StatusCode.OK
+                error('oceanum:datamesh:Connector:queryError', ...
+                      'Query failed with status %s', char(stage_response.StatusCode));
+            end
+
+            % successful: response body available
+            stage_results = stage_response.Body.Data;
         end
     end
 end
