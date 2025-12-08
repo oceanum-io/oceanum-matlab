@@ -124,13 +124,18 @@ classdef Datasource < handle
             end
 
             % Assign Properties 
-            obj.attributes = props.metadata;
-
-            obj.bounds = props.bbox;
-
+            if isfield(props,'metadata')
+                obj.attributes = props.metadata;
+            end
+            if isfield(props,'bbox')
+                obj.bounds = props.bbox;
+            end
 
             obj.geometry = NaN; % TODO: Implement GeoJSON display of bounds
-            obj.variables = props.schema.data_vars;
+            
+            if isfield(props,'schema')
+                obj.variables = props.schema.data_vars;
+            end
 
 
         end

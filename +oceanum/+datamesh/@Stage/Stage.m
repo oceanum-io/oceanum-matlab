@@ -54,7 +54,6 @@ classdef Stage < handle
             if isfield(data, 'sig')
                 obj.sig = data.sig;
             end
-            
         end
         
         function str = char(obj)

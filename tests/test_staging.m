@@ -27,7 +27,7 @@ function test_session_creation(testCase)
     
     % Create mock connector
     try
-        connector = oceanum.datamesh.Connector('mock-token');
+        connector = oceanum.datamesh.Connector();
     catch
         % Expected to fail without real connection
         connector = [];

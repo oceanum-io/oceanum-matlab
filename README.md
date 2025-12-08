@@ -14,7 +14,7 @@ This is a MATLAB conversion of the [oceanum-python](../oceanum-python) library, 
 - Automatic session management  
 - NetCDF support for dataset containers
 - Query size limits with clear error messages
-- Compatible with MATLAB R2019b and later
+- Compatible with MATLAB R2022b and later
 - Octave compatibility for basic operations
 
 ## Installation

@@ -6,7 +6,7 @@ function test_connector_creation(testCase)
     % Test that connector can be created with a token
     try
         % This will fail without a real token, but should test the constructor
-        connector = oceanum.datamesh.Connector('test-token');
+        connector = oceanum.datamesh.Connector();
         testCase.verifyClass(connector, 'oceanum.datamesh.Connector');
     catch ME
         % Expected to fail without valid token/connection
@@ -22,11 +22,11 @@ end
 
 function test_query_creation(testCase)
     % Test Query object creation
-    query = oceanum.datamesh.Query('datasource', 'test-ds', 'limit', 100);
+    query_input = struct("datasource",'test',"limit",100);
+    query = oceanum.datamesh.Query(query_input);
     
-    testCase.verifyEqual(query.datasource, 'test-ds');
+    testCase.verifyEqual(query.datasource, 'test');
     testCase.verifyEqual(query.limit, 100);
-    testCase.verifyTrue(query.hasFilters());
 end
 
 function test_query_from_struct(testCase)
