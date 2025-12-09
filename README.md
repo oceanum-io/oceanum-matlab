@@ -35,14 +35,15 @@ setenv('DATAMESH_TOKEN', 'your-token-here');
 connector = oceanum.datamesh.Connector();
 
 % Browse catalog
-catalog = connector.getCatalog('limit', 10);
+catalog = connector.get_catalog('search');
 disp(catalog);
 
 % Load a datasource
-data = connector.loadDatasource('datasource-id');
+data = connector.load_datasource('datasource-id');
 
 % Make a query
-result = connector.query('datasource', 'datasource-id', 'limit', 1000);
+query_input = struct('datasource', 'datasource-id', 'limit', 1000)
+result = connector.query(query_input);
 ```
 
 ## Documentation
