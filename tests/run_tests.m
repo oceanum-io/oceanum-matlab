@@ -1,6 +1,6 @@
 function results = run_tests()
     % Run all tests for the oceanum-matlab library
-    
+    clc
     fprintf('Running oceanum-matlab tests...\n\n');
     
     % Add the parent directory to path so we can access the +oceanum package
