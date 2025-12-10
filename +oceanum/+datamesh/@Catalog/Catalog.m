@@ -127,7 +127,7 @@ classdef Catalog < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
         
-        function data = load(obj, datasourceId, useDask)
+        function data = load(obj, datasourceId)
           % LOAD - Load a datasource from the catalog
           %
           % Input arguments:
@@ -137,7 +137,6 @@ classdef Catalog < handle
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
-                useDask logical = false
             end
             
             % Verify the requested datasource exists in the catalog
@@ -147,35 +146,23 @@ classdef Catalog < handle
             end
             
             % Delegate loading to the connector (optionally using Dask)
-            data = obj.connector.loadDatasource(datasourceId, 'useDask', useDask);
+            data = obj.connector.load_datasource(datasourceId);
         end
         
-        function result = query(obj, datasource, variables, timefilter, geofilter, limit)
-          % QUERY - Query a datasource with optional filters and limit
-          %
-          % Input arguments:
-          % obj        - caller object
-          % datasource - datasource name (text scalar), default ''
-          % variables  - cell array of variable names to return, default {}
-          % timefilter - struct with time filtering criteria, default empty
-          % geofilter  - struct with geographic filtering criteria, default empty
-          % limit      - numeric limit on number of results, default []
+        function result = query(obj, query_input)
+          % QUERY - Query a datasource 
             arguments
                 obj
-                datasource {mustBeTextScalar} = ''
-                variables cell = {}
-                timefilter struct = struct.empty
-                geofilter struct = struct.empty
-                limit double = []
+                query_input struct
             end
             
             % Validate requested datasource exists in this catalog
-            if ~any(strcmp(obj.ids, options.datasource))
+            if ~any(strcmp(obj.ids, query_input.datasource))
                 error('oceanum:datamesh:Catalog:notFound', ...
                     'Datasource %s not found in catalog', datasource);
             end
             
-            result = obj.connector.query(datasource, variables, timefilter, geofilter, limit);
+            result = obj.connector.query(query_input);
         end
         
         function idList = getIds(obj)

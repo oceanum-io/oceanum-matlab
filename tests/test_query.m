@@ -47,6 +47,6 @@ function test_query_multipleDatasources(testCase)
     ];
     for i = 1:length(query_inputs)
         data = connector.query(query_inputs(i));
-        testCase.verifyNumElements(data, i); % Verify each query returns data
+        testCase.verifyNumElements(data, 1); % Verify each query returns data
     end
 end

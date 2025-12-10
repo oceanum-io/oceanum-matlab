@@ -18,7 +18,7 @@ function test_end_to_end_workflow(testCase)
         testCase.verifyClass(connector, 'oceanum.datamesh.Connector');
         
         % Get catalog
-        catalog = connector.getCatalog('limit', 5);
+        catalog = connector.get_catalog('limit', 5);
         testCase.verifyClass(catalog, 'oceanum.datamesh.Catalog');
         
         % Check catalog has content
@@ -28,13 +28,13 @@ function test_end_to_end_workflow(testCase)
             
             % Try to get first datasource
             firstId = ids{1};
-            ds = connector.getDatasource(firstId);
+            ds = connector.get_datasource(firstId);
             testCase.verifyClass(ds, 'oceanum.datamesh.Datasource');
             testCase.verifyEqual(ds.id, firstId);
             
             % Try to load small amount of data
             try
-                data = connector.loadDatasource(firstId);
+                data = connector.load_datasource(firstId);
                 if ~isempty(data)
                     % Data could be a table (parquet) or struct (NetCDF)
                     testCase.verifyTrue(istable(data) || isstruct(data));
@@ -56,19 +56,20 @@ function test_query_building(testCase)
     % Test query building without actually executing
     
     % Test basic query
-    query = oceanum.datamesh.Query('datasource', 'test-datasource');
+    query = oceanum.datamesh.Query(struct('datasource', 'test-datasource'));
     testCase.verifyEqual(query.datasource, 'test-datasource');
     
     % Test query with filters
     timefilter = oceanum.datamesh.Query.createTimeFilter({'2023-01-01', '2023-12-31'});
     geofilter = oceanum.datamesh.Query.createGeoFilter([-10, -10, 10, 10]);
     
-    query = oceanum.datamesh.Query(...
+    query_input =struct(...
         'datasource', 'test-datasource', ...
         'variables', {{'temperature', 'salinity'}}, ...
         'timefilter', timefilter, ...
         'geofilter', geofilter, ...
         'limit', 1000);
+    query = oceanum.datamesh.Query(query_input);
     
     testCase.verifyEqual(query.datasource, 'test-datasource');
     testCase.verifyEqual(query.variables, {'temperature', 'salinity'});
@@ -111,7 +112,7 @@ function test_catalog_operations(testCase)
         testCase.verifyTrue(any(strcmp(ids, 'ds2')));
         
         % Test getting datasource from catalog
-        ds1 = catalog.getDatasource('ds1');
+        ds1 = catalog.get_datasource('ds1');
         testCase.verifyEqual(ds1.id, 'ds1');
         testCase.verifyEqual(ds1.name, 'Dataset 1');
     end

@@ -4,14 +4,12 @@ end
 
 function test_stage_creation(testCase)
     % Test Stage object creation
-    stageData = struct();
-    stageData.qhash = 'test-hash';
-    stageData.container = 'dataset';
-    stageData.size = 1000;
-    stageData.dlen = 500;
-    stageData.formats = {'application/x-netcdf4', 'application/parquet'};
-    
-    stage = oceanum.datamesh.Stage(stageData);
+    test = struct();
+    test.qhash = 'test-hash';
+    test.container = 'dataset';
+    test.size = 1000;
+    test.dlen = 500;
+    stage = oceanum.datamesh.Stage(test);
     
     testCase.verifyEqual(stage.qhash, 'test-hash');
     testCase.verifyEqual(stage.container, 'dataset');
@@ -20,6 +18,19 @@ function test_stage_creation(testCase)
     testCase.verifyTrue(stage.isDataset());
     testCase.verifyFalse(stage.isDataFrame());
     testCase.verifyFalse(stage.isGeoDataFrame());
+end
+
+function testValidStageRequest(testCase)
+    query_input = struct("datasource", "oceanum-sea-level-rise");
+    connector = oceanum.datamesh.Connector();
+    stage = connector.stage_request(connector,query_input);
+    
+    testCase.verifyNotEmpty(stage, ...
+        'Expected non-empty stage results for valid query.');
+    testCase.verifyTrue(isfield(stage.toStruct, "size"), ...
+        'Stage response missing field "size".');
+    testCase.verifyTrue(isfield(stage.toStruct, "dlen"), ...
+        'Stage response missing field "dlen".');
 end
 
 function test_session_creation(testCase)
@@ -53,7 +64,7 @@ function test_session_creation(testCase)
         baseHeaders = matlab.net.http.HeaderField('Content-Type', 'application/json');
         headers = session.addHeader(baseHeaders);
         testCase.verifyEqual(length(headers), 2);
-        testCase.verifyTrue(any(strcmp({headers.Name}, 'X-DATAMESH-SESSIONID')));
+        testCase.verifyTrue(any(strcmp(headers(end).Name, "X-DATAMESH-SESSIONID")));
     end
 end
 
@@ -93,12 +104,13 @@ function test_query_with_staging_mock(testCase)
     timefilter = oceanum.datamesh.Query.createTimeFilter({'2023-01-01', '2023-12-31'});
     geofilter = oceanum.datamesh.Query.createGeoFilter([-10, -10, 10, 10]);
     
-    query = oceanum.datamesh.Query(...
+    query_input = struct(...
         'datasource', 'test-datasource', ...
         'variables', {{'temperature', 'salinity'}}, ...
         'timefilter', timefilter, ...
         'geofilter', geofilter, ...
         'limit', 1000);
+    query = oceanum.datamesh.Query(query_input);
     
     testCase.verifyEqual(query.datasource, 'test-datasource');
     testCase.verifyEqual(query.variables, {'temperature', 'salinity'});
@@ -152,20 +164,17 @@ function test_connector_integration(testCase)
         testCase.verifyClass(connector, 'oceanum.datamesh.Connector');
         
         % Test that methods exist
-        testCase.verifyTrue(ismethod(connector, 'executeQuery'));
-        testCase.verifyTrue(ismethod(connector, 'getGateway'));
-        testCase.verifyTrue(ismethod(connector, 'getAuthHeaders'));
-        testCase.verifyTrue(ismethod(connector, 'getSessionParams'));
+        testCase.verifyTrue(ismethod(connector, 'query'));
+        testCase.verifyTrue(ismethod(connector, 'get_host'));
+        testCase.verifyTrue(ismethod(connector, 'check_info'));
+        testCase.verifyTrue(ismethod(connector, 'status'));
         
         % Test getter methods
-        gateway = connector.getGateway();
+        gateway = connector.host();
         testCase.verifyClass(gateway, 'char');
         
-        headers = connector.getAuthHeaders();
-        testCase.verifyClass(headers, 'matlab.net.http.HeaderField');
-        
-        params = connector.getSessionParams();
-        testCase.verifyClass(params, 'struct');
+        status = connector.status();
+        testCase.verifyTrue(status);
         
     catch ME
         % Integration tests can fail for various connectivity reasons

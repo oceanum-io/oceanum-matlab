@@ -40,6 +40,18 @@ function results = run_tests()
         fprintf('Integration tests failed to run: %s\n\n', ME.message);
         results2 = [];
     end
+
+    % Run query tests 
+    fprintf('=== Integration Tests ===\n');
+    try
+        suite3 = testsuite('test_query.m');
+        results3 = run(suite3);
+        fprintf('Query tests completed: %d passed, %d failed\n\n', ...
+            sum([results3.Passed]), sum([results3.Failed]));
+    catch ME
+        fprintf('Query tests failed to run: %s\n\n', ME.message);
+        results3 = [];
+    end
     
     % Combine results
     results = [];
@@ -51,6 +63,9 @@ function results = run_tests()
     end
     if ~isempty(results2)
         results = [results results2];
+    end
+    if ~isempty(results3)
+        results = [results results3];
     end
     
     if ~isempty(results)

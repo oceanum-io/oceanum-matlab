@@ -69,8 +69,53 @@ classdef Connector < handle
 
             % Setup session 
             obj.user = obj.session(obj);
+        end
 
-            fprintf('Datamesh connector created for %s\n', obj.host);
+        function result = get_host(obj)
+         % GET_HOST gets the host part of the URL and returns it as a
+         % string.
+         %
+         % Inputs:
+         %      obj     - connector object
+         % Outputs:
+         %      result  - the host as a string
+            arguments
+                obj oceanum.datamesh.Connector = oceanum.datamesh.Connector()
+            end
+            
+            result = obj.host;
+        end
+
+        function result = check_info(obj)
+            % Currently not implemented yet.
+            arguments
+                obj oceanum.datamesh.Connector = oceanum.datamesh.Connector()
+            end
+            result = NaN;
+        end
+
+        function result = status(obj)
+         % STATUS returns the status of the oceanum.datamesh.Connector()
+         %
+         % Inputs:
+         %      obj     - connector object
+         % Outputs:
+         %      result  - true or false for whether the connector is
+         %                connected to the servers.
+            arguments
+                obj oceanum.datamesh.Connector = oceanum.datamesh.Connector()
+            end
+            % Make request
+            uri = matlab.net.URI(obj.gateway);
+            method = matlab.net.http.RequestMethod.GET;
+            request = matlab.net.http.RequestMessage(method, obj.authHeaders);
+            response = send(request, uri);
+            if response.StatusCode == matlab.net.http.StatusCode.OK
+                fprintf('Datamesh connector created for %s\n', obj.host);
+                result = true;
+            else
+                result = false;
+            end
         end
 
         function catalog = get_catalog(obj, search, timefilter, geofilter, limit)
@@ -300,6 +345,7 @@ classdef Connector < handle
             % since MATLAB doesn't have the same async/dask capabilities
 
             % Get stage query to check if query is within size limits
+            query_input = struct("datasource",datasourceId);
             stage_results = obj.stage_request(obj,query_input);
 
             % if datasource is too big for memory
@@ -371,18 +417,27 @@ classdef Connector < handle
                 query_size_limit int64 = 1000000000; % 1 GB
                 row_limit int64 = 2000000;
             end
+
             
+            if isfield(query_input, 'datasource')
+                if length(char(query_input.datasource)) < 3
+                    error('oceanum:datamesh:Connector:InvalidInput', ...
+                        'Datasource ID must be 3 or more characters')
+                end
+            end
+                
+
             % Get stage query to check if query is within size limits
             stage_results = obj.stage_request(obj,query_input);
             if isempty(stage_results)
-                error('oceanum:datamesh:Connector:queryError', ...
-                      'Could not find queried datasource')
+                error('oceanum:datamesh:Connector:EmptyDatasource', ...
+                      'No data found in datasource')
             end
 
 
             if stage_results.size > query_size_limit
                 error('oceanum:datamesh:Connector:queryError', ...
-                      'Query failed due to query size being %s which is gretaer than the 1 GB limit', char(stage_results.size))
+                      'Query failed due to query size being %i which is greater than the 1 GB limit', stage_results.size)
             end
             if stage_results.dlen > row_limit
                 warning('oceanum:datamesh:Connector:queryWarning', ...
@@ -495,12 +550,12 @@ classdef Connector < handle
             end
 
             if stage_response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('oceanum:datamesh:Connector:queryError', ...
+                error('oceanum:datamesh:Connector:NotFound', ...
                       'Query failed with status %s', char(stage_response.StatusCode));
             end
 
             % successful: response body available
-            stage_results = stage_response.Body.Data;
+            stage_results = oceanum.datamesh.Stage(stage_response.Body.Data);
         end
     end
 end

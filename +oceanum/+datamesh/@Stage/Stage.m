@@ -1,5 +1,4 @@
 classdef Stage < handle
-    
     % query: Query = Field(title="OceanQL query")
     % qhash: str = Field(title="Query hash")
     % formats: List[str] = Field(title="Available download formats")
@@ -38,9 +37,13 @@ classdef Stage < handle
             end
             if isfield(data, 'size')
                 obj.size = data.size;
+            elseif isfield(data, 'Size')
+                obj.size = data.Size;
             end
             if isfield(data, 'dlen')
                 obj.dlen = data.dlen;
+            elseif isfield(data, 'Dlen')
+                obj.dlen = data.Dlen;
             end
             if isfield(data, 'coordmap')
                 obj.coordmap = data.coordmap;
@@ -66,7 +69,7 @@ classdef Stage < handle
             end
             if ~isempty(obj.formats)
                 if iscell(obj.formats)
-                    forhttps://datamesh.oceanum.io/oceanq1/stage/mats = strjoin(obj.formats, ', ');
+                    formats = strjoin(obj.formats, ', ');
                 else
                     formats = jsonencode(obj.formats);
                 end
@@ -88,6 +91,19 @@ classdef Stage < handle
         
         function tf = isGeoDataFrame(obj)
             tf = strcmp(obj.container, 'geodataframe');
+        end
+        
+        function s = toStruct(obj)
+            s = struct();
+            s.query = obj.query;
+            s.qhash = obj.qhash;
+            s.formats = obj.formats;
+            s.size = obj.size;
+            s.dlen = obj.dlen;
+            s.coordmap = obj.coordmap;
+            s.coordkeys = obj.coordkeys;
+            s.container = obj.container;
+            s.sig = obj.sig;
         end
     end
 end
