@@ -127,7 +127,7 @@ classdef Catalog < handle
             datasource = oceanum.datamesh.Datasource(props);
         end
         
-        function data = load(obj, datasourceId)
+        function data = load_datasource(obj, datasourceId)
           % LOAD - Load a datasource from the catalog
           %
           % Input arguments:

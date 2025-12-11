@@ -351,7 +351,7 @@ classdef Connector < handle
             % if datasource is too big for memory
             if stage_results.size > size_limit
                 error('oceanum:datamesh:Connector:LoadDatasourceError', ...
-                      'Load failed due to datasource size being %s which is gretaer than the 1 GB limit', char(stage_results.size))
+                      'Load failed due to datasource size being %i which is gretaer than the 1 GB limit', stage_results.size)
             end
 
             % if datasource has too many rows to load in.
