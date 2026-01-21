@@ -37,3 +37,12 @@ speed2d = squeeze(speed(1,:,:));   % 721 x 1440
 figure
 imagesc(long, lat, speed2d)
 set(gca, 'YDir', 'normal')          % im
+axis tight
+
+colormap("turbo")
+cb = colorbar;
+cb.Label.String = 'Wind speed (m s^{-1})';
+
+xlabel('Longitude')
+ylabel('Latitude')
+title('ERA5 10 m Wind Speed on 2023-01-02')
