@@ -13,13 +13,14 @@
 %   connector = oceanum.datamesh.Connector('your-token');
 %   
 %   % Get catalog
-%   catalog = connector.getCatalog();
+%   catalog = connector.get_catalog();
 %   
-%   % Load a datasource
-%   data = connector.loadDatasource('datasource-id');
+%   % Load a full datasource
+%   data = connector.load_datasource('datasource-id');
 %   
 %   % Make a query
-%   result = connector.query('datasource', 'datasource-id', 'limit', 1000);
+%   query = struct('datasource', 'datasource-id', 'limit', 1000);
+%   result = connector.query(query);
 %
 % For more information, see the documentation at:
 % https://oceanum-python.readthedocs.io/

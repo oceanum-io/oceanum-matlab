@@ -85,7 +85,7 @@ classdef Catalog < handle
                 end
                 tstart =  timerange{1}{1}; % TODO: clean up time output so its more readable
                 tend = timerange{1}{2};
-                str = sprintf('%s\n %s [%s] \nTimerange: %s to %s \n Extent: %s,', str, name, ...
+                str = sprintf('%s\n %s [%s] \nTimerange: %s to %s \n Extent: %s \n', str, name, ...
                     feature.id, tstart, tend, boundingbox);
             end
         end

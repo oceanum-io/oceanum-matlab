@@ -40,74 +40,74 @@ classdef Query < handle
             
             if isfield(query_,"parameters")
                 obj.parameters = query_.parameters;
-            % else
-            %     obj.parameters = {};
+            else
+                obj.parameters = {};
             end
 
             if isfield(query_, "description")
                 obj.description = query_.description;
-            % else
-            %     obj.description = NaN;
+            else
+                obj.description = {};
             end
 
             if isfield(query_, "variables")
                 obj.variables = query_.variables;
-            % else
-            %     obj.variables = NaN;
+            else
+                obj.variables = {};
             end
 
             if isfield(query_, "timefilter")
                 obj.timefilter = query_.timefilter;
-            % else
-            %     obj.timefilter = NaN;
+            else
+                obj.timefilter = {};
             end
             
             if isfield(query_, "geofilter")
                 obj.geofilter = query_.geofilter;
-            % else
-            %     obj.geofilter = NaN;
+            else
+                obj.geofilter = {};
             end
             
             if isfield(query_, "levelfilter")
                 obj.levelfilter = query_.levelfilter;
-            % else
-            %     obj.levelfilter = NaN;
+            else
+                obj.levelfilter = {};
             end
             
             if isfield(query_, "coordfilter")
                 obj.coordfilter = query_.coordfilter;
-            % else
-            %     obj.coordfilter = NaN;
+            else
+                obj.coordfilter = {};
             end
             
             if isfield(query_, "crs")
                 obj.crs = query_.crs;
-            % else
-            %     obj.crs = NaN;
+            else
+                obj.crs = {};
             end
             
             if isfield(query_, "aggregate")
                 obj.aggregate = query_.aggregate;
-            % else
-            %     obj.aggregate = NaN;
+            else
+                obj.aggregate = {};
             end
             
             if isfield(query_, "functions")
                 obj.functions = query_.functions;
-            % else 
-            %     obj.functions = [];
+            else 
+                obj.functions = {};
             end
             
             if isfield(query_, "limit")
                 obj.limit = query_.limit;
-            % else 
-            %     obj.limit = NaN;
+            else 
+                obj.limit = {};
             end
             
             if isfield(query_, "id")
                 obj.id = query_.id;
-            % else
-            %     obj.id = NaN;
+            else
+                obj.id = {};
             end
         end
         

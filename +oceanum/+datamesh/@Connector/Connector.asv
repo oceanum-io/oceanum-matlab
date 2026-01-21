@@ -5,12 +5,12 @@ classdef Connector < handle
     %   catalog, retrieve and load datasources, and run queries.
     %
     %   Methods:
-    %       getCatalog    - Retrieve available datasources
-    %       getDatasource - Fetch metadata for a datasource
-    %       loadDatasource- Download datasource contents
-    %       query         - Run OceanQL queries against gateway
+    %       get_catalog     - Retrieve available datasources
+    %       get_datasource  - Fetch metadata for a datasource
+    %       load_datasource - Download datasource contents
+    %       query           - Run OceanQL queries against gateway
     %
-    %   See also matlab.net.URI, matlab.net.http.RequestMessage
+    %   See also https://docs.oceanum.io/docs/index
     properties (Access=private)
         token % Datamesh Token
         service 
@@ -24,12 +24,14 @@ classdef Connector < handle
 
     methods
         function obj = Connector(token, service, verify)
-          % CONNECTOR - Construct a Connector for the DataMesh service
+          % CONNECTOR constructs a connector for the DataMesh service
           %
-          % Input arguments:
-          % token   - API token (text scalar). Defaults to DATAMESH_TOKEN env var.
-          % service - Service base URL (text scalar). Defaults to production URL.
-          % verify  - Logical flag to verify TLS certificates (true/false).
+          % Inputs:
+          %     token   - API token (text scalar). Defaults to DATAMESH_TOKEN env var.
+          %     service - Service base URL (text scalar). Defaults to production URL.
+          %     verify  - Logical flag to verify TLS certificates (true/false).
+          % Outputs:
+          %     connector object
             arguments
                 token {mustBeTextScalar} = getenv('DATAMESH_TOKEN')
                 service {mustBeTextScalar} = 'https://datamesh.oceanum.io'
@@ -68,13 +70,62 @@ classdef Connector < handle
             % Setup session 
             obj.user = obj.session(obj);
 
-            fprintf('Datamesh connector created for %s\n', obj.host);
+            % Check info
+            
+
+        end
+
+        function result = get_host(obj)
+         % GET_HOST gets the host part of the URL and returns it as a
+         % string.
+         %
+         % Inputs:
+         %      obj     - connector object
+         % Outputs:
+         %      result  - the host as a string
+            arguments
+                obj oceanum.datamesh.Connector = oceanum.datamesh.Connector()
+            end
+            
+            result = obj.host;
+        end
+
+        function result = check_info(obj)
+            % Currently not implemented yet.
+            arguments
+                obj oceanum.datamesh.Connector = oceanum.datamesh.Connector()
+            end
+            result = NaN;
+        end
+
+        function result = status(obj)
+         % STATUS returns the status of the oceanum.datamesh.Connector()
+         %
+         % Inputs:
+         %      obj     - connector object
+         % Outputs:
+         %      result  - true or false for whether the connector is
+         %                connected to the servers.
+            arguments
+                obj oceanum.datamesh.Connector = oceanum.datamesh.Connector()
+            end
+            % Make request
+            uri = matlab.net.URI(obj.gateway);
+            method = matlab.net.http.RequestMethod.GET;
+            request = matlab.net.http.RequestMessage(method, obj.authHeaders);
+            response = send(request, uri);
+            if response.StatusCode == matlab.net.http.StatusCode.OK
+                fprintf('Datamesh connector created for %s\n', obj.host);
+                result = true;
+            else
+                result = false;
+            end
         end
 
         function catalog = get_catalog(obj, search, timefilter, geofilter, limit)
             % GETCATALOG - Retrieve datasource catalog with optional search and limit
             %
-            % Input arguments:
+            % Inputs:
             %   obj   - connector object with proto/host/authHeaders
             %   search - optional search string (text scalar)
             %   timefilter - optional time filter search to restrict catalogue
@@ -86,7 +137,7 @@ classdef Connector < handle
                 obj
                 search {mustBeTextScalar} = ''
                 timefilter string = [] 
-                geofilter = [] 
+                geofilter = struct.empty 
                 limit int32 = NaN
             end
 
@@ -106,7 +157,6 @@ classdef Connector < handle
                 end
             end
             
-            % Copilot generated code... TODO: Fix so it works properly
             % geofilter -> geom_intersects (accept WKT string or struct with .wkt)
             if ~isempty(geofilter)
                 if ischar(geofilter) || isstring(geofilter)
@@ -149,6 +199,7 @@ classdef Connector < handle
             %   - single-element (treated as start with open end / or vice-versa)
             %
             % Returns '' on unknown input or failure.
+            % Written by Copilot.
         
             if isempty(timefilter)
                 s = '';
@@ -237,7 +288,7 @@ classdef Connector < handle
         end
 
         function datasource = get_datasource(obj, datasourceId)
-          % GETDATASOURCE - Retrieve a datasource by its identifier
+          % GET_DATASOURCE retrieves a datasource by its identifier
           %
           % Inputs:
           %     obj          - Connector instance providing datasource access
@@ -275,10 +326,10 @@ classdef Connector < handle
         end
 
         function data = load_datasource(obj, datasourceId, size_limit, row_limit)
-            % LOADDATASOURCE - Load data for a given datasource identifier
+            % LOADDATASOURCE loads data for a given datasource identifier
+            % IMPORTANT, It is not possible to load large datasources
+            % into MATLAB due to size constraints
             %
-            % !!! IMPORTANT It is not possible to load large datasources
-            % into matlab due to size !!!
             % Input arguments:
             %   obj                 - object instance providing datasource access
             %   datasourceId        - text scalar identifier of the datasource
@@ -286,7 +337,7 @@ classdef Connector < handle
             %   row_limit           - Optional parameter row limit of query
             %
             % Output arguments:
-            %   data - loaded datasource content
+            %   data                - loaded datasource content
             arguments
                 obj
                 datasourceId {mustBeTextScalar}
@@ -298,12 +349,13 @@ classdef Connector < handle
             % since MATLAB doesn't have the same async/dask capabilities
 
             % Get stage query to check if query is within size limits
+            query_input = struct("datasource",datasourceId);
             stage_results = obj.stage_request(obj,query_input);
 
             % if datasource is too big for memory
             if stage_results.size > size_limit
                 error('oceanum:datamesh:Connector:LoadDatasourceError', ...
-                      'Load failed due to datasource size being %s which is gretaer than the 1 GB limit', char(stage_results.size))
+                      'Load failed due to datasource size being %i which is gretaer than the 1 GB limit', stage_results.size)
             end
 
             % if datasource has too many rows to load in.
@@ -321,16 +373,33 @@ classdef Connector < handle
                 error('oceanum:datamesh:Connector:loadError', ...
                     'Failed to load datasource %s: %s', datasourceId, char(response.StatusCode));
             end
+            container = {"geodataframe", "dataframe", "dataset"};
 
             % Save response to temporary file and read with readtable
-            % TODO: Fix saving
-            tempFile = [tempname, '.json'];
+            % TODO: Fix 
+            tempFile = tempname;
             try
-                fid = fopen(tempFile, 'wb');
-                fwrite(fid, response.Body.Data);
-                fclose(fid);
+                % Check if the response data is in a supported format
+                if isfield(response.Body.Data, 'Data') % Assuming the data structure has a 'Data' field
+                    fid = fopen(tempFile, 'wb');
+                    fwrite(fid, response.Body.Data.Data); % Write the data to the temporary file
+                    fclose(fid);
+                elseif isfield(response.Body.Data, 'variables') % Check for NETCDF structure
+                    % Assuming response.Body.Data is a structure with variables for NETCDF
+                    ncid = netcdf.create(tempFile, 'NC_WRITE');
+                    for i = 1:length(response.Body.Data.variables)
+                        varName = response.Body.Data.variables(i).name;
+                        varData = response.Body.Data.variables(i).data;
+                        varid = netcdf.defVar(ncid, varName, 'double', length(varData)); % Adjust type as necessary
+                        netcdf.putVar(ncid, varid, varData);
+                    end
+                    netcdf.close(ncid);
+                else
+                    error('oceanum:datamesh:Connector:UnsupportedFormat', ...
+                          'Response data format is not supported for writing to a file');
+                end
 
-                % Try to read as parquet, fallback to CSV if needed
+                % Attempt to read the data back into MATLAB
                 try
                     data = readtable(tempFile, 'FileType');
                 catch
@@ -352,7 +421,7 @@ classdef Connector < handle
         end
 
         function result = query(obj, query_input, query_size_limit, row_limit)
-            % QUERY - Build and execute a data query on the object datasource
+            % QUERY builds and execute a data query on the object datasource
             %
             % Input arguments:
             %   obj                 - connector object
@@ -369,13 +438,27 @@ classdef Connector < handle
                 query_size_limit int64 = 1000000000; % 1 GB
                 row_limit int64 = 2000000;
             end
+            % if class(query_input) != 
             
+            if isfield(query_input, 'datasource')
+                if length(char(query_input.datasource)) < 3
+                    error('oceanum:datamesh:Connector:InvalidInput', ...
+                        'Datasource ID must be 3 or more characters')
+                end
+            end
+                
+
             % Get stage query to check if query is within size limits
             stage_results = obj.stage_request(obj,query_input);
+            if isempty(stage_results)
+                error('oceanum:datamesh:Connector:EmptyDatasource', ...
+                      'No data found in datasource')
+            end
+
 
             if stage_results.size > query_size_limit
                 error('oceanum:datamesh:Connector:queryError', ...
-                      'Query failed due to query size being %s which is gretaer than the 1 GB limit', char(stage_results.size))
+                      'Query failed due to query size being %i which is greater than the 1 GB limit', stage_results.size)
             end
             if stage_results.dlen > row_limit
                 warning('oceanum:datamesh:Connector:queryWarning', ...
@@ -388,7 +471,7 @@ classdef Connector < handle
             uri = matlab.net.URI(strcat(obj.service, '/oceanql/'));
             
             % build headers (ensure obj.authHeaders is HeaderField array)
-            headers = [ session_data.addHeader(obj.authHeaders), ...
+            headers =  [session_data.addHeader(obj.authHeaders), ...
                         matlab.net.http.field.ContentTypeField('application/json'), ...
                         matlab.net.http.HeaderField('accept', 'application/json')];
             
@@ -408,7 +491,7 @@ classdef Connector < handle
     end
     methods (Static)
         function user_session = session(obj,duration)
-          % SESSION - Create or retrieve a user session for given duration
+          % SESSION creates or retrieve a user session for given duration
           %
           % Inputs:
           %     obj             - session manager object
@@ -488,12 +571,12 @@ classdef Connector < handle
             end
 
             if stage_response.StatusCode ~= matlab.net.http.StatusCode.OK
-                error('oceanum:datamesh:Connector:queryError', ...
+                error('oceanum:datamesh:Connector:NotFound', ...
                       'Query failed with status %s', char(stage_response.StatusCode));
             end
 
             % successful: response body available
-            stage_results = stage_response.Body.Data;
+            stage_results = oceanum.datamesh.Stage(stage_response.Body.Data);
         end
     end
 end
