@@ -34,7 +34,7 @@ data = conn.query(query);
 
 %% Now that the data's been loaded in, we can view it in our work space.
 % By default the datasource should be a structure as that has the best
-% compatibility with MATLAB.
+% compatibility with built-in MATLAB functions.
 
 Days = data.data_vars.Day.data;
 sea_level_rise_average = data.data_vars.sea_level_rise_average.data;

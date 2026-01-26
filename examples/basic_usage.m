@@ -30,8 +30,7 @@ fprintf('=== Browsing Catalog ===\n');
 
 try
     % Get catalog with a limit to avoid too much data
-    catalog = connector.getCatalog('limit', 10);
-    fprintf('Found %d datasources:\n', length(catalog));
+    catalog = connector.get_catalog('oceanum', [], [], 10);
     
     % Display catalog
     disp(catalog);
@@ -68,13 +67,13 @@ if exist('ids', 'var') && ~isempty(ids)
     end
 end
 
-%% Load Data
+%% Load Data (Not fully implemented yet)
 if exist('firstId', 'var')
     fprintf('=== Loading Data ===\n');
     
     try
         % Load datasource data
-        data = connector.loadDatasource(firstId);
+        data = connector.load_datasource(firstId);
         
         if ~isempty(data)
             fprintf('Loaded data successfully!\n');
