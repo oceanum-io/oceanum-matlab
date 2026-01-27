@@ -41,14 +41,14 @@ boxplot([wspd(:,1), wspd(:,45)], {'Site 1','Site 45'})
 ylabel('Daily mean wind speed')
 
 %% plot wind speed at specific times
-day = 398833;  % try a few values
+day = 398833; 
 
 figure
 scatter(lon, lat, 80, wspd(day,:).', 'filled')
 colorbar
 xlabel('Longitude')
 ylabel('Latitude')
-title(sprintf('Wind speed at %s', string(time(tidx))))
+title(sprintf('Wind speed at %s', string(time(day))))
 axis equal
 grid on
 
