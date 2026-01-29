@@ -373,51 +373,7 @@ classdef Connector < handle
                 error('oceanum:datamesh:Connector:loadError', ...
                     'Failed to load datasource %s: %s', datasourceId, char(response.StatusCode));
             end
-            container = {"geodataframe", "dataframe", "dataset"};
-
-            % Save response to temporary file and read with readtable
-            % TODO: Fix 
-            tempFile = tempname;
-            try
-                % Check if the response data is in a supported format
-                if isfield(response.Body.Data, 'Data') % Assuming the data structure has a 'Data' field
-                    fid = fopen(tempFile, 'wb');
-                    fwrite(fid, response.Body.Data.Data); % Write the data to the temporary file
-                    fclose(fid);
-                elseif isfield(response.Body.Data, 'variables') % Check for NETCDF structure
-                    % Assuming response.Body.Data is a structure with variables for NETCDF
-                    ncid = netcdf.create(tempFile, 'NC_WRITE');
-                    for i = 1:length(response.Body.Data.variables)
-                        varName = response.Body.Data.variables(i).name;
-                        varData = response.Body.Data.variables(i).data;
-                        varid = netcdf.defVar(ncid, varName, 'double', length(varData)); % Adjust type as necessary
-                        netcdf.putVar(ncid, varid, varData);
-                    end
-                    netcdf.close(ncid);
-                else
-                    error('oceanum:datamesh:Connector:UnsupportedFormat', ...
-                          'Response data format is not supported for writing to a file');
-                end
-
-                % Attempt to read the data back into MATLAB
-                try
-                    data = readtable(tempFile, 'FileType');
-                catch
-                    % If parquet reading fails, the data might be in a different format
-                    warning('oceanum:datamesh:Connector:formatWarning', ...
-                        'Could not read as parquet, data format may not be fully supported in MATLAB');
-                    data = [];
-                end
-            catch ME
-                if exist(tempFile, 'file')
-                    delete(tempFile);
-                end
-                rethrow(ME);
-            end
-
-            if exist(tempFile, 'file')
-                delete(tempFile);
-            end
+            data = query_response.Body.Data;
         end
 
         function result = query(obj, query_input, query_size_limit, row_limit)
@@ -488,6 +444,8 @@ classdef Connector < handle
             result = query_response.Body.Data;
             
         end
+        
+
     end
     methods (Static)
         function user_session = session(obj,duration)
