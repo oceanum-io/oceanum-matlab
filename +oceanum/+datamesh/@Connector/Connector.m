@@ -445,7 +445,22 @@ classdef Connector < handle
             
         end
         
-
+        function ds = write_datasource(obj,datasource_id, data, geometry, geom, append, overwrite, index, crs, properties)
+            arguments
+                obj
+                datasource_id {mustBeTextScalar}
+                data
+                geometry = NaN
+                geom = NaN
+                append = NaN
+                overwrite = false
+                index = NaN
+                crs = NaN
+                properties = struct.empty
+            end
+                
+            
+        end
     end
     methods (Static)
         function user_session = session(obj,duration)
