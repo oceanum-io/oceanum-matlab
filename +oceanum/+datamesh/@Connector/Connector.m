@@ -449,7 +449,7 @@ classdef Connector < handle
             arguments
                 obj
                 datasource_id {mustBeTextScalar}
-                data
+                data = NaN
                 geometry = NaN
                 geom = NaN
                 append = NaN
@@ -458,8 +458,17 @@ classdef Connector < handle
                 crs = NaN
                 properties = struct.empty
             end
+            try
+                ds = obj.get_datasource(datasource_id);
+            catch ME
+                if ME == "error"
                 
-            
+                end
+            end
+            if ~isnan(data)
+                 
+            end
+
         end
     end
     methods (Static)
@@ -550,6 +559,61 @@ classdef Connector < handle
 
             % successful: response body available
             stage_results = oceanum.datamesh.Stage(stage_response.Body.Data);
+        end
+
+        function ds = write_data(obj, datasource_id, data, dataformat, append, overwrite)
+            arguments
+                obj
+                datasource_id {mustBeTextScalar}
+                data
+                dataformat = "application/json"
+                append = null
+                overwrite = false
+            end
+            if overwrite == true
+                % build URI and messagebody for request
+                data_input = matlab.net.http.MessageBody(data);
+                session_data = obj.session(obj);
+                uri = matlab.net.URI(strcat(obj.service, '/data/', datasource_id));
+                
+                % build headers
+                headers = [session_data.addHeader(obj.authHeaders), ...
+                            matlab.net.http.field.ContentTypeField(dataformat), ...
+                            matlab.net.http.HeaderField('accept', dataformat)];
+
+                % create RequestMessage with MessageBody wrapper
+                request = matlab.net.http.RequestMessage( ...
+                        'PUT', ...
+                        headers, ...
+                        data_input);
+                resp = send(request,uri);
+            else
+                % build URI and messagebody for request
+                data_input = matlab.net.http.MessageBody(data);
+                session_data = obj.session(obj);
+                uri = matlab.net.URI(strcat(obj.service, '/data/', datasource_id));
+                
+                % build headers
+                headers = [session_data.addHeader(obj.authHeaders), ...
+                            matlab.net.http.field.ContentTypeField(dataformat), ...
+                            matlab.net.http.HeaderField('accept', dataformat)];
+                if ~isnan(append)
+                    headers = [headers, matlab.net.http.HeaderField('X-Append', string(append))];
+                end
+
+                % create RequestMessage with MessageBody wrapper
+                request = matlab.net.http.RequestMessage( ...
+                        'PATCH', ...
+                        headers, ...
+                        data_input);
+                resp = send(request,uri);
+            end
+            if resp.StatusCode ~= matlab.net.http.StatusCode.OK
+                error('oceanum:datamesh:Connector:NotFound', ...
+                      'Write Datasource failed with status %s', char(resp.StatusCode));
+            end
+            ds = resp;
+            
         end
     end
 end
