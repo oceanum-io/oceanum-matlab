@@ -71,7 +71,7 @@ classdef Connector < handle
             obj.user = obj.session(obj);
 
             % Check info
-            
+            % Not implemented server side yet...
 
         end
 
@@ -235,7 +235,7 @@ classdef Connector < handle
             % Ensure two elements
             if numel(times) == 0
                 times = {[],[]};
-            elseif numel(times) == 1
+            elseif isscalar(times)
                 times{2} = [];
             else
                 times = times(1:2);
@@ -458,19 +458,46 @@ classdef Connector < handle
                 crs = NaN
                 properties = struct.empty
             end
+
             try
                 ds = obj.get_datasource(datasource_id);
             catch ME
-                if ME == "error"
-                
+                overwrite = true;
+            end
+            
+            if ~isnan(data)
+                try 
+                    f = tempname + ".nc";
+                    nccreate(f, "data")
+                    ncwrite(f, "data", data)
+                    fid = fopen(f,"r");
+                    read_data = fread(fid,Inf, "*uint8");
+                    fclose(fid);
+                    ds = obj.write_data(obj, ...
+                        datasource_id, ...
+                        read_data, ...
+                        "application/netcdf4", ...
+                        append, ...
+                        overwrite);
+                    delete(f)
+                catch ME
+                    f = tempname + ".parquet";
+                    parquetwrite(f,data)
+                    fid = fopen(f,"r");
+                    read_data = fread(fid,Inf, "*uint8");
+                    fclose(fid);
+                    ds = obj.write_data(obj, ...
+                        datasource_id, ...
+                        read_data, ...
+                        "application/parquet", ...
+                        append, ...
+                        overwrite);
+                    delete(f)
                 end
             end
-            if ~isnan(data)
-                 
-            end
-
         end
     end
+
     methods (Static)
         function user_session = session(obj,duration)
           % SESSION creates or retrieve a user session for given duration

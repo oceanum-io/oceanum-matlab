@@ -15,7 +15,7 @@ conn = oceanum.datamesh.Connector();
 
 %% The get_catalog returns all the datasets which contain the keyword
 % inputted. For example:
-catalog = conn.get_catalog("oceanum");
+catalog = conn.get_catalog("wave");
 disp(catalog)
 
 %% After finding a specific datasource, you can pull more information about
