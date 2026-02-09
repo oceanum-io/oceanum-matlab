@@ -446,6 +446,21 @@ classdef Connector < handle
         end
         
         function ds = write_datasource(obj,datasource_id, data, geometry, geom, append, overwrite, index, crs, properties)
+            % Writes data to Datamesh servers. 100 mb limit due to lack of
+            % zarr and dask in MATLAB.
+            % Input arguments:
+            %   obj             - Connector Object
+            %   datasource_id   - String of unique datasource ID
+            %   data            - Data to be uploaded to Datamesh
+            %   geomerty        - Geometry of Datasource
+            %   geom            - Geom of Datasource
+            %   append          - Append datasource
+            %   overwrite       - Boolean whether to overwrite datasource
+            %   index           - index metadata
+            %   crs             - crs metadata
+            %   properties      - Properties of datasource
+            % Output arguments:
+            %   ds              - Datasource server response
             arguments
                 obj
                 datasource_id {mustBeTextScalar}
