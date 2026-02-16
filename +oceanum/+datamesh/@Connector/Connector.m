@@ -496,6 +496,7 @@ classdef Connector < handle
                         overwrite);
                     delete(f)
                 catch ME
+                    % If netcdf fails use parquet
                     f = tempname + ".parquet";
                     parquetwrite(f,data)
                     fid = fopen(f,"r");
@@ -510,7 +511,17 @@ classdef Connector < handle
                     delete(f)
                 end
             end
+
+            % Write metadata...
+            if overwrite == true
+                props = struct("id", datasource_id);
+                ds = oceanum.datamesh.Datasource(props);
+            end
         end
+        function write_metadata()
+
+        end
+
     end
 
     methods (Static)
